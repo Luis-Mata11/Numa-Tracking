@@ -1,0 +1,195 @@
+<main id="main-content" class="routes-page">
+    <header>
+        <div class="header-titles">
+            <h1>Gestión de Rutas</h1>
+            <p class="text-muted">Administra trayectos, paradas y asignaciones</p>
+        </div>
+        <button id="btn-new-route" class="btn-primary">
+            <i class="fa-solid fa-plus"></i> Nueva Ruta
+        </button>
+    </header>
+
+    <div class="routes-layout">
+        <aside class="routes-list-panel">
+            <div class="search-filter-container">
+                <div class="search-bar-wrapper">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input id="search-route" type="search" placeholder="Buscar ruta, cliente o chofer..." />
+                    <button id="btn-toggle-filters" title="Filtros avanzados">
+                        <i class="fa-solid fa-sliders"></i>
+                    </button>
+                </div>
+
+                <div id="filter-popup" class="filter-popup hidden">
+                    <h3>Filtros Avanzados</h3>
+                    <div class="filter-group">
+                        <label for="status-filter">Estado</label>
+                        <select id="status-filter" class="numa-input">
+                            <option value="">Todos</option>
+                            <option value="active">En progreso</option>
+                            <option value="inactive">Completada / Inactiva</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="vehicle-filter">Vehículo</label>
+                        <select id="vehicle-filter" class="numa-input"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="driver-filter">Chofer</label>
+                        <select id="driver-filter" class="numa-input"></select>
+                    </div>
+                    <button id="btn-reset-filters" class="btn-secondary">Limpiar Filtros</button>
+                </div>
+            </div>
+
+            <ul id="route-items" class="route-items-list">
+            </ul>
+        </aside>
+
+        <section class="route-detail-panel" id="route-detail">
+            <div id="route-info-panel" class="route-info-banner hidden">
+                <div class="banner-header">
+                    <div class="info-block">
+                        <small>RUTA</small>
+                        <h3 id="route-name-badge">—</h3>
+                    </div>
+                    <div class="info-block">
+                        <small>CHOFER ASIGNADO</small>
+                        <h3 id="driver-name-badge">—</h3>
+                    </div>
+                </div>
+
+                <div class="banner-metrics">
+                    <div class="metric">
+                        <small>DISTANCIA</small>
+                        <div id="route-detail-distance" class="val">—</div>
+                    </div>
+                    <div class="metric">
+                        <small>DURACIÓN</small>
+                        <div id="route-detail-duration" class="val">—</div>
+                    </div>
+                    <div class="metric">
+                        <small>ESTADO</small>
+                        <div id="driver-status-badge" class="val status-pill">
+                            <i class="fa-solid fa-circle"></i> <span>—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-wrapper">
+                <div id="main-map"></div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<div id="new-route-panel" class="offcanvas-panel">
+    <div class="panel-header" id="panel-header">
+        <h2 id="panel-title">Trazar Nueva Ruta</h2>
+        <button id="close-panel" class="btn-close">&times;</button>
+    </div>
+
+    <form id="form-new-route" class="panel-body">
+        <input type="hidden" id="route-id" />
+
+        <div class="form-row">
+            <div class="form-group flex-grow">
+                <label for="route-name">Nombre de la Ruta</label>
+                <input type="text" id="route-name" class="numa-input" required
+                    placeholder="Ej: Ruta Norte - Vespertina" />
+            </div>
+            <div class="form-group color-picker-group">
+                <label for="route-color">Color</label>
+                <input type="color" id="route-color" value="#6c8cff" />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="route-client"><i class="fa fa-user-plus"></i> Asignar Cliente</label>
+            <select id="route-client" name="client" class="numa-input" disabled>
+                <option value="">Módulo de clientes disponible próximamente.</option>
+            </select>
+        </div>
+
+        <div class="form-group-grid">
+            <div class="form-group">
+                <label for="route-vehicle"><i class="fa fa-truck"></i> Vehículo</label>
+                <select id="route-vehicle" name="vehicle" class="numa-input">
+                    <option value="">Cargando...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="route-driver"><i class="fa fa-id-card"></i> Chofer</label>
+                <select id="route-driver" name="driver" class="numa-input">
+                    <option value="">Cargando...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="map-controls">
+
+
+            <div class="draw-actions">
+                <div class="action-group">
+                    <span class="group-label">Punto de Partida</span>
+                    <button type="button" id="btn-use-base" class="btn-tool" title="Usar Base">
+                        <i class="fas fa-building"></i> Base
+                    </button>
+                    <button type="button" id="btn-draw-origin" class="btn-tool" title="Trazar Inicio">
+                        <i class="fas fa-map-marker-alt"></i> Manual
+                    </button>
+                </div>
+
+                <div class="action-group">
+                    <span class="group-label">Destino y Paradas</span>
+                    <button type="button" id="btn-add-waypoint" class="btn-tool">
+                        <i class="fas fa-plus-circle"></i> Parada
+                    </button>
+                    <button type="button" id="btn-draw-dest" class="btn-tool">
+                        <i class="fas fa-flag-checkered"></i> Destino
+                    </button>
+                </div>
+
+                <button type="button" id="btn-clear-map" class="btn-tool btn-danger-icon" title="Limpiar Mapa">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+            <hr class="divider">
+
+            <div class="search-address">
+                <i class="fa-solid fa-location-dot"></i>
+                <input id="pac-input" class="numa-input" type="text" placeholder="Buscar dirección en el mapa..." />
+            </div>
+
+        </div>
+
+        <div id="draw-map" class="draw-map-container"></div>
+
+
+
+        <input type="hidden" id="route-origin" name="origin">
+        <input type="hidden" id="route-destination" name="destination">
+        <input type="hidden" id="route-waypoints" name="waypoints">
+        <input type="hidden" id="route-stops" name="stops">
+
+
+    </form>
+
+    <div class="panel-footer">
+        <div id="create-route-metrics" class="live-metrics">
+            <div class="metric-chip"><i class="fa-solid fa-route"></i> <span id="create-distance">0 km</span></div>
+            <div class="metric-chip"><i class="fa-regular fa-clock"></i> <span id="create-duration">0 min</span></div>
+        </div>
+        <div id="buttons-route-metrics" class="cancel-save-btns">
+            <button type="button" id="btn-cancel-form" class="btn-secondary">Cancelar</button>
+
+            <button type="submit" id="submit-route" form="form-new-route" class="btn-primary">
+                Guardar Ruta
+            </button>
+        </div>
+
+
+    </div>
+</div>
+</div>

@@ -1,0 +1,101 @@
+<!-- public/register.html -->
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NUMA Tracking</title>
+  <link rel="stylesheet" href="/src/css/signUp.css">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/logo.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+  <div class="login-container">
+    <div class="form-panel">
+      <div class="wrap">
+        <header class="brand center">
+          <div class="logo">
+            <img src="/img/logo.png" alt="Logo de NUMA">
+          </div>
+          <h1>Crear Cuenta</h1>
+          <p class="muted">Empieza a gestionar tus rutas hoy mismo</p>
+        </header>
+
+        <main class="card" role="main">
+          <form id="register-form" autocomplete="off" novalidate>
+            <div class="field">
+              <label for="nombres">Nombre(s)</label>
+              <input id="nombres" name="nombres" type="text" placeholder="Ej. Juan" required />
+            </div>
+
+            <div class="field">
+              <label for="apellidos">Apellido(s)</label>
+              <input id="apellidos" name="apellidos" type="text" placeholder="Ej. Pérez" required />
+            </div>
+
+            <div class="field">
+              <label for="empresa">Empresa</label>
+              <input id="empresa" name="empresa" type="text" placeholder="Ej. Numa Corp." required />
+            </div>
+
+            <div class="field">
+              <label for="telefono">Número de teléfono</label>
+              <input id="telefono" name="telefono" type="tel" placeholder="+52 1 55 1234 5678" inputmode="tel"
+                pattern="[0-9+\-\s()]{7,}" />
+              <p class="hint muted small">Incluye código de país si aplicable.</p>
+            </div>
+
+            <div class="field">
+              <label for="email">Correo electrónico</label>
+              <input id="email" name="email" type="email" placeholder="ejemplo@correo.com" required />
+            </div>
+
+            <div class="field">
+              <label for="contrasena">Contraseña</label>
+              <div class="pw-wrap">
+                <input id="contrasena" name="contrasena" type="password" placeholder="Mínimo 8 caracteres" minlength="8"
+                  required />
+                <button type="button" class="icon-btn" aria-label="Mostrar contraseña" title="Mostrar/ocultar">
+                  <i class="fa fa-eye-slash" aria-hidden="true"></i>
+                </button>
+              </div>
+              <p class="hint muted small">Usa una contraseña segura — mínimo 8 caracteres.</p>
+            </div>
+
+            <div class="field">
+              <label for="confirmar_contrasena">Confirmar contraseña</label>
+              <div class="pw-wrap">
+                <input id="confirmar_contrasena" name="confirmar_contrasena" type="password"
+                  placeholder="Repite tu contraseña" minlength="8" required />
+                <button type="button" class="icon-btn" aria-label="Mostrar contraseña" title="Mostrar/ocultar">
+                  <i class="fa fa-eye-slash" aria-hidden="true"></i>
+                </button>
+              </div>
+              <div id="pw-match" class="muted small" style="display:none;">Las contraseñas coinciden.</div>
+            </div>
+
+            <div class="error" id="error-msg" style="display:none;"></div>
+
+            <div class="card-footer">
+              <button id="btn-register" class="btn-primary" type="submit">
+                Crear mi cuenta trial (15 días)
+              </button>
+              <div class="center" style="margin-top: 15px;">
+                <a href="login.html" class="small muted">Ya tengo cuenta, volver al login</a>
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+
+    <div class="image-panel" role="presentation" aria-hidden="true"></div>
+  </div>
+
+  <!-- El JS (mostrar/ocultar pw y validación) puede ir en /js/modules/services/singup.js -->
+  <script type="module" src="/src/js/modules/auth/signUp.js"></script>
+</body>
+
+</html>

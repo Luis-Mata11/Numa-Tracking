@@ -1,0 +1,294 @@
+/* ==========================================================================
+   SIDEBAR STYLES
+   ========================================================================== */
+
+#sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 76px;
+  background: var(--sidebar-bg);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px 10px;
+  transition: width .28s cubic-bezier(.2, .9, .3, 1);
+  z-index: 40;
+  overflow: hidden;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Menú Principal --- */
+.sidebar-menu {
+  flex-grow: 1;
+  width: 100%;
+}
+
+#sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+#sidebar li {
+  margin-top: 60px;
+}
+
+#sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 12px 12px;
+  border-radius: 12px;
+  transition: all .2s;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+#sidebar a i {
+  font-size: 20px;
+  min-width: 24px;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+#sidebar a span {
+  white-space: nowrap;
+  font-weight: 500;
+  font-size: 14px;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity .2s, transform .2s;
+}
+
+#sidebar a .badge {
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+/* Hover y Activo */
+#sidebar a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+#sidebar a.active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(108, 140, 255, 0.4);
+}
+
+/* --- Footer del Sidebar (Perfil) --- */
+.sidebar-footer {
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 15px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: transparent;
+}
+
+.logout-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  color: #ff6b6b !important;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.logout-link:hover {
+  background: rgba(255, 107, 107, 0.15) !important;
+  transform: translateX(3px);
+}
+
+.user-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  transition: background 0.2s;
+  overflow: hidden;
+  height: 56px;
+}
+
+.user-avatar {
+  position: relative;
+  min-width: 10px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-avatar i {
+  font-size: 28px;
+  color: #fff;
+}
+
+/* Indicador de Estado */
+.status-indicator {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #1a202c;
+  background-color: #95a5a6;
+  transition: background-color 0.3s ease;
+  z-index: 2;
+}
+
+.status-indicator.success { background-color: #2ecc71; box-shadow: 0 0 6px rgba(46, 204, 113, 0.5); }
+.status-indicator.warning { background-color: #f1c40f; box-shadow: 0 0 6px rgba(241, 196, 15, 0.5); }
+.status-indicator.danger { background-color: #e74c3c; box-shadow: 0 0 6px rgba(231, 76, 60, 0.5); }
+
+/* Detalles de Texto */
+.user-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity .3s ease;
+  overflow: hidden;
+}
+
+.u-name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  line-height: 1.2;
+}
+
+.u-license {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.u-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.u-days {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+}
+
+/* Utilidades de texto para el status */
+.text-success { color: #2ecc71 !important; }
+.text-warning { color: #f1c40f !important; }
+.text-danger { color: #e74c3c !important; }
+.text-gray { color: #95a5a6 !important; }
+
+/* ==========================================================================
+   DESKTOP ONLY (Hover Effects y Ajustes de Layout)
+   ========================================================================== */
+@media (min-width: 993px) {
+  /* Efectos Hover (Expandir) */
+  #sidebar:hover { width: 240px; }
+  #sidebar:hover a span, #sidebar:hover .user-details { opacity: 1; transform: translateX(0); }
+  #sidebar:hover .user-profile-card { background: rgba(0, 0, 0, 0.4); }
+
+  /* Desplazamiento del contenido adyacente */
+  #sidebar + #main-content { 
+    margin-left: 76px; 
+    width: calc(100% - 76px); 
+    transition: margin-left .28s cubic-bezier(.2, .9, .3, 1), width .28s cubic-bezier(.2, .9, .3, 1);
+  }
+  
+  #sidebar:hover + #main-content { 
+    margin-left: 240px; 
+    width: calc(100% - 240px); 
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE SIDEBAR (Mobile/Tablet)
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  #sidebar {
+    height: 70px;
+    width: 100%;
+    bottom: auto;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 16px;
+    overflow-x: auto;
+    transition: none; /* Quitamos transiciones para que no haya efectos extraños */
+  }
+  
+  .sidebar-footer {
+    width: auto;
+    border-top: none;
+    padding-top: 0;
+    flex-direction: row;
+  }
+  
+  .user-profile-card { background: transparent; padding: 0; width: auto; }
+  .user-details { display: none; }
+  .logout-link span { display: none; }
+  
+  #sidebar ul { display: flex; gap: 5px; align-items: center; }
+  #sidebar li { margin: 0; padding-bottom: 0; }
+  #sidebar a span { opacity: 1; transform: none; display: inline-block; }
+  
+  /* El hover en mobile no debe expandir el width ni hacer nada raro */
+  #sidebar:hover { width: 100%; }
+  
+  /* El contenido principal se queda fijo debajo del header */
+  #sidebar + #main-content {
+    margin-left: 0 !important;
+    margin-top: 70px;
+    width: 100% !important;
+    transition: none;
+  }
+  
+  /* Prevenir que el hover modifique el main-content en mobile */
+  #sidebar:hover + #main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 600px) {
+  #sidebar { padding: 0 8px; }
+  #sidebar a { padding: 8px 10px; gap: 8px; }
+  #sidebar a span { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+  #sidebar { height: auto; min-height: 60px; padding: 0 6px; }
+  #sidebar a { padding: 6px 8px; gap: 6px; }
+  #sidebar a i { font-size: 18px; min-width: 20px; }
+  #sidebar a span { font-size: 12px; }
+}

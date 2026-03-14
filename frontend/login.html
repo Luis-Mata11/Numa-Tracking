@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NUMA Tracking - Acceso</title>
+
+<link rel="stylesheet" href="/src/css/admin-login.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" type="image/png" sizes="16x16" href="/img/logo.png">
+</head>
+
+<body>
+
+  <div class="login-container">
+    <div class="form-panel">
+      <div class="wrap">
+        <header class="brand center">
+          <div class="logo">
+            <img src="/img/logo.png" alt="Logo de NUMA" onerror="this.style.display='none'">
+          </div>
+          <div>
+            <h1>NUMA Tracking</h1>
+            <p class="muted">Gestiona tus rutas</p>
+          </div>
+        </header>
+
+        <main class="card" role="main" aria-labelledby="login-title">
+          <div>
+            <h2 id="login-title" style="margin:0 0 6px 0">Ingresar como administrador</h2>
+            <div class="hint">Introduce tu correo y contraseña</div>
+          </div>
+
+          <form id="login-form" autocomplete="on" novalidate>
+            <div id="error-msg" class="error" role="alert" aria-live="assertive" style="display: none;"></div>
+
+            <div class="field">
+              <label for="email">Correo electrónico</label>
+              <input id="email" name="email" type="email" placeholder="tu@empresa.com" required 
+                aria-describedby="email-hint" autocomplete="email">
+              <small id="email-hint" class="hint" style="display:block; margin-top:4px;">Usa tu correo administrativo</small>
+            </div>
+
+            <div class="field">
+              <label for="password">Contraseña</label>
+              <div class="pw-wrap">
+                <input id="password" name="password" type="password" placeholder="••••••••" required 
+                  autocomplete="current-password">
+                <button type="button" id="toggle-pw" class="icon-btn" title="Mostrar contraseña" aria-label="Mostrar contraseña">
+                  <i class="fa fa-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="card-footer" style="margin-top: 20px;">
+              <button id="btn-login" class="btn-primary" type="submit">
+                Entrar
+              </button>
+
+              <div class="center" style="margin-top: 20px;">
+                <p class="small muted">
+                  ¿No tienes una cuenta?
+                  <a href="signUp.html" class="bold" style="color: var(--primary-color, #007bff);">Regístrate aquí</a>
+                </p>
+              </div>
+            </div>
+          </form>
+        </main>
+      </div>
+    </div>
+    <div class="image-panel"></div>
+  </div>
+
+ <script type="module" src="/src/js/modules/auth/login.js"></script>
+
+</body>
+</html>

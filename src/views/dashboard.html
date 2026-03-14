@@ -1,0 +1,153 @@
+<div id="main-content" class="dashboard-wrapper">
+    <header>
+        <div class="logo-container">
+            <div>
+                <h1>NUMA Tracking</h1>
+                <p class="muted">Panel de administración en tiempo real</p>
+            </div>
+        </div>
+
+
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <i class="fa-solid fa-truck-moving"></i>
+                <div>
+                    <span class="kpi-value" id="kpi-activos">0</span>
+                    <span class="kpi-label">Rutas pendientes</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <i class="fa-solid fa-route"></i>
+                <div>
+                    <span class="kpi-value" id="kpi-rutas">0</span>
+                    <span class="kpi-label">Rutas en curso</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <i class="fa-solid fa-font-awesome"></i>
+                <div>
+                    <span class="kpi-value" id="kpi-alertas">0</span>
+                    <span class="kpi-label">Rutas finalizadas</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <i class="fa fa-users" aria-hidden="true"></i>
+                <div>
+                    <span class="kpi-value" id="kpi-distancia">0</span>
+                    <span class="kpi-label">Choferes activos</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="notification-bell" id="notification-bell">
+                <i class="fa-solid fa-bell"></i>
+                <span class="notif-badge" id="notif-badge">3</span> </div>
+            
+            <div class="notification-dropdown" id="notification-dropdown">
+                <div class="notif-dropdown-header">
+                    <h4>Notificaciones</h4>
+                    <span class="mark-read" id="mark-read-btn">Marcar leídas</span>
+                </div>
+                <div class="notif-list" id="notif-list">
+                    <div class="notif-item unread">
+                        <i class="fa-solid fa-triangle-exclamation" style="color: #e74c3c;"></i>
+                        <div class="notif-content">
+                            <p><strong>Alerta de desvío:</strong> Ruta R-102</p>
+                            <small>Hace 2 min</small>
+                        </div>
+                    </div>
+                    <div class="notif-item">
+                        <i class="fa-solid fa-check-circle" style="color: #2ecc71;"></i>
+                        <div class="notif-content">
+                            <p><strong>Ruta finalizada:</strong> R-098 por Juan Pérez</p>
+                            <small>Hace 15 min</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="principal">
+        <div id="draw-map" style="width: 100%; height: 500px; min-height: 500px; position: relative;">
+            <button class="btn-services">
+                <i class="fa fa-wrench" aria-hidden="true"></i>
+            </button>
+
+            <div id="services-menu" class="services-menu-container" style="display: none;">
+                <button class="service-option" data-service="grua">
+                    <i class="fa-solid fa-truck-pickup"></i><span>Grúa</span>
+                </button>
+                <button class="service-option" data-service="gasolina">
+                    <i class="fa-solid fa-gas-pump"></i><span>Gasolina</span>
+                </button>
+                <button class="service-option" data-service="mecanico">
+                    <i class="fa-solid fa-user-gear"></i><span>Mecánico</span>
+                </button>
+                <button class="service-option" data-service="llanta">
+                    <i class="fa-solid fa-car-burst"></i><span>Llantero</span>
+                </button>
+            </div>
+        </div>
+        <p id="status" style="text-align:center; margin-top:8px; color:#555;"></p>
+    </section>
+
+    <section id="secundaria">
+        <div id="info_gen">
+            <div class="info-container">
+                <div class="info-card">
+                    <div>
+                        <h2>Ruta Seleccionada</h2>
+                        <p id="route-name-display">--</p>
+                        <p id="route-id-display" class="muted">--</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div>
+                        <h2>Chofer</h2>
+                        <p id="chofer-name-display">--</p>
+                        <p id="chofer-id-display" class="muted">--</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div>
+                        <h2>Vehículo</h2>
+                        <p id="vehiculo-name-display">--</p>
+                        <p id="vehiculo-id-display" class="muted">--</p>
+                    </div>
+                </div>
+                <div class="info-card">
+                    <div>
+                        <h2>Ubicación</h2>
+                        <p id="coords-display">--</p>
+                        <p id="coords-status-display" class="muted">--</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div id="notification-container" class="notification-container" style="display: none;">
+    <div class="notification-content">
+        <p id="notification-text"></p>
+        <div class="notification-actions">
+            <button id="btn-accept-finish" class="btn-accept">Aceptar</button>
+            <button id="btn-decline-finish" class="btn-decline">Declinar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-no-base" class="modalB" style="display: none;">
+    <div class="modal-content">
+        <h3>⚠️ Base Operativa no detectada</h3>
+        <p>No se ha configurado la ubicación de la base.</p>
+        <div class="modal-buttons">
+            <button id="btn-go-config" class="btn-primary">Configurar</button>
+            <button id="btn-close-modal" class="btn-secondary">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script src="../js/ui/notifications.js"></script>
