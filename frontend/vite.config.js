@@ -15,8 +15,8 @@ export default defineConfig({
 
         // 👇 Le agregamos 'views/' a los que están dentro de la carpeta
         routes: resolve(__dirname, 'src/views/routes.html'),
-        choferes: resolve(__dirname, 'src/views/choferes.html'),
-        vehiculos: resolve(__dirname, 'src/views/vehiculos.html'),
+        choferes: resolve(__dirname, 'src/views/drivers.html'),
+        vehiculos: resolve(__dirname, 'src/views/vehicles.html'),
         reportes: resolve(__dirname, 'src/views/reports.html'),
         configuraciones: resolve(__dirname, 'src/views/settings.html'),
       },
