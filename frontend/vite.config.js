@@ -14,6 +14,7 @@ export default defineConfig({
         login: resolve(__dirname, 'login.html'),
 
         // 👇 Le agregamos 'views/' a los que están dentro de la carpeta
+        signup: resolve(__dirname, 'signUp.html'), // <-- ¡Asegúrate de que esta línea exista!
         routes: resolve(__dirname, 'src/views/routes.html'),
         choferes: resolve(__dirname, 'src/views/drivers.html'),
         vehiculos: resolve(__dirname, 'src/views/vehicles.html'),
