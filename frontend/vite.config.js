@@ -9,13 +9,16 @@ export default defineConfig({
     outDir: 'dist', 
     rollupOptions: {
       input: {
+        // Asumiendo que estos dos SÍ están en la raíz del frontend:
         main: resolve(__dirname, 'index.html'),
         login: resolve(__dirname, 'login.html'),
-        routes: resolve(__dirname, 'routes.html'),
-        choferes: resolve(__dirname, 'choferes.html'),
-        vehiculos: resolve(__dirname, 'vehiculos.html'),
-        reportes: resolve(__dirname, 'reports.html'),
-        configuraciones: resolve(__dirname, 'settings.html'),
+        
+        // 👇 Le agregamos 'views/' a los que están dentro de la carpeta
+        routes: resolve(__dirname, 'views/routes.html'),
+        choferes: resolve(__dirname, 'views/choferes.html'),
+        vehiculos: resolve(__dirname, 'views/vehiculos.html'),
+        reportes: resolve(__dirname, 'views/reports.html'),
+        configuraciones: resolve(__dirname, 'views/settings.html'),
       },
     },
   },
