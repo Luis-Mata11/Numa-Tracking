@@ -2,7 +2,7 @@
 
 // 👇 IMPORTAMOS LA IMAGEN PARA QUE VITE LA EMPAQUETE
 // (Ajusta los '../' según dónde esté tu carpeta assets realmente)
-import logoPath from '/img/assets/logo.png'; 
+import logoPath from '/assets/logo.png'; 
 
 export function showLoader() {
     let loader = document.getElementById('global-loader');
