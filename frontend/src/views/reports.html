@@ -1,0 +1,110 @@
+<main id="main-content" class="reports-container">
+    
+    <header class="page-header">
+        <div class="header-titles">
+            <h1>Reportes de Rutas Finalizadas</h1>
+            <p class="text-muted">Filtra y visualiza el historial de rutas completadas.</p>
+        </div>
+    </header>
+
+    <div class="filters-bar">
+        <div class="filters-left">
+            <div class="form-group">
+                <label for="filter-type" class="group-label">Tipo de Filtro</label>
+                <select id="filter-type" class="numa-input">
+                    <option value="all">Ver todos</option>
+                    <option value="driver">Por Chofer</option>
+                    <option value="vehicle">Por Vehículo</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="filter-value" class="group-label">Seleccionar</label>
+                <select id="filter-value" class="numa-input" disabled>
+                    <option value="">-- Elige un tipo --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="group-label">Periodo</label>
+                <div class="date-filter-group">
+                    <button class="btn-tool active" data-period="day">Día</button>
+                    <button class="btn-tool" data-period="week">Semana</button>
+                    <input type="month" id="month-filter-input" class="numa-input" data-period="month" style="height: 40px; width: 160px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-right">
+            <button id="btn-preview-pdf" class="btn-primary">
+                <i class="fa-solid fa-file-pdf"></i> Previsualizar PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="results-area">
+        <h2 id="report-title" style="margin-top: 0;">Reporte de Hoy</h2>
+        
+        <div id="report-results" class="results-grid">
+            <div class="route-card">
+                <div class="card-header">
+                    <h3 class="route-name">Ruta Centro - Entrega A</h3>
+                    <span class="completion-date">Hoy, 02:30 PM</span>
+                </div>
+                <div class="card-body">
+                    <p><i class="fa-solid fa-user"></i> <strong>Chofer:</strong> Juan Pérez</p>
+                    <p><i class="fa-solid fa-truck"></i> <strong>Vehículo:</strong> V-01 (Nissan)</p>
+                    <p><i class="fa-solid fa-check-circle" style="color: #10b981;"></i> <strong>Estatus:</strong> Finalizada</p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn-details">Ver detalle</button>
+                </div>
+            </div>
+            
+            <div class="route-card">
+                <div class="card-header">
+                    <h3 class="route-name">Ruta Periférico - Recolección B</h3>
+                    <span class="completion-date">Hoy, 11:15 AM</span>
+                </div>
+                <div class="card-body">
+                    <p><i class="fa-solid fa-user"></i> <strong>Chofer:</strong> Ana Gómez</p>
+                    <p><i class="fa-solid fa-truck"></i> <strong>Vehículo:</strong> V-02 (Ford)</p>
+                    <p><i class="fa-solid fa-check-circle" style="color: #10b981;"></i> <strong>Estatus:</strong> Finalizada</p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn-details">Ver detalle</button>
+                </div>
+            </div>
+            </div>
+    </div>
+</main>
+
+<div id="pdf-modal-overlay" class="modal-overlay hidden"></div>
+ 
+<div id="pdf-modal" class="pdf-modal-panel">
+ 
+    <!-- Header fijo del modal -->
+    <div class="pdf-modal-header">
+        <div class="pdf-modal-title">
+            <i class="fa-solid fa-file-pdf" style="color:#e03131;"></i>
+            <span>Vista Previa del Reporte</span>
+        </div>
+        <div class="pdf-modal-actions">
+            <button id="btn-export-pdf" class="btn-primary">
+                <i class="fa-solid fa-download"></i> Descargar PDF
+            </button>
+            <button id="btn-close-modal" class="btn-icon-close" title="Cerrar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+    </div>
+ 
+    <!-- Área de contenido scrollable -->
+    <div class="pdf-modal-body">
+        <div id="pdf-modal-content">
+            <!-- Se llena dinámicamente por PDFManager.open() -->
+        </div>
+    </div>
+ 
+</div>
+ 

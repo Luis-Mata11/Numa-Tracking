@@ -1,0 +1,51 @@
+
+<div class="vehicles-container">
+    <aside class="vehicles-list">
+        <div class="list-header">
+            <input id="search-vehicle" type="search" placeholder="Buscar vehículo..." aria-label="Buscar vehículo" />
+            <button id="btn-new-vehicle" class="btn-primary"><i class="fa-solid fa-plus"></i> Nuevo</button>
+        </div>
+
+        <ul id="vehicle-items" aria-live="polite" aria-label="Lista de vehículos"></ul>
+    </aside>
+
+    <section class="vehicle-detail" id="vehicle-detail" aria-labelledby="initial-message">
+        <p id="initial-message" style="text-align:center; margin-top:50px; color:#888;">Selecciona un vehículo o crea uno nuevo.</p>
+    </section>
+</div>
+
+<template id="vehicle-form-template">
+    <form id="vehicle-form" novalidate style="padding: 20px;">
+        <h2 id="form-title">Nuevo Vehículo</h2>
+
+        <div style="margin-bottom: 15px;">
+            <label for="vehicle-id">Placa (ID)</label>
+            <input type="text" id="vehicle-id" placeholder="ABC-123" required autocomplete="off" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="vehicle-alias">Alias</label>
+            <input type="text" id="vehicle-alias" placeholder="Ej: La Chilindrina" autocomplete="off" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="vehicle-marca">Marca</label>
+            <input type="text" id="vehicle-marca" placeholder="Kenworth" required autocomplete="off" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="vehicle-modelo">Modelo</label>
+            <input type="text" id="vehicle-modelo" placeholder="T680" required autocomplete="off" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label for="vehicle-year">Año</label>
+            <input type="number" id="vehicle-year" min="1900" max="2099" inputmode="numeric" style="width: 100%; padding: 8px;" />
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn-primary">Guardar</button>
+            <button type="button" id="btn-cancel-form" class="btn-secondary">Cancelar</button>
+        </div>
+    </form>
+</template>

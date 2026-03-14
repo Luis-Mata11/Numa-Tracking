@@ -1,0 +1,230 @@
+/* vehicles.css — Adaptado y limpio */
+
+/* ========== Variables ========== */
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --text: #0f1724;
+  --sidebar-bg: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  --accent: #6c8cff;
+  --accent-2: #f357a1;
+  --glass: rgba(255, 255, 255, 0.06);
+  --shadow: 0 6px 18px rgba(12, 20, 33, 0.08);
+  --radius-lg: 14px;
+  --radius-sm: 8px;
+  --gap: 18px;
+  font-synthesis: none;
+}
+
+/* ========== Ajustes de Contenido (relación con el Sidebar) ========== */
+/* Si tu sidebar sigue usando el mismo ID, mantenemos esto para el offset */
+#sidebar + .vehicles-container { 
+    margin-left: 76px; 
+    transition: margin-left .28s; 
+    width: calc(100% - 76px); 
+}
+#sidebar:hover + .vehicles-container { 
+    margin-left: 220px; 
+    width: calc(100% - 220px); 
+}
+
+/* ========== Main layout ========== */
+.vehicles-container {
+  display: flex; 
+  gap: var(--gap); 
+  align-items: flex-start; 
+  padding: 26px; 
+  width: 100%;
+}
+
+/* ========== Left list (Lista de Vehículos) ========== */
+.vehicles-list {
+  flex: 0 0 340px; 
+  min-width: 260px; 
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.55));
+  border-radius: var(--radius-lg); 
+  padding: 18px; 
+  box-shadow: var(--shadow); 
+  backdrop-filter: blur(6px) saturate(120%);
+}
+
+.list-header {
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  gap: 12px; 
+  margin-bottom: 12px;
+}
+
+#search-vehicle {
+  width: 100%; 
+  padding: 8px 12px; 
+  border-radius: var(--radius-sm); 
+  border: 1px solid rgba(15,23,36,0.12); 
+  box-sizing: border-box;
+}
+
+/* Vehicle items (Generados por JS) */
+#vehicle-items { 
+    list-style: none; 
+    margin: 0; 
+    padding: 0; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+}
+
+.vehicle-item {
+  display: flex; 
+  gap: 12px; 
+  align-items: center; 
+  padding: 12px; 
+  border-radius: 10px; 
+  cursor: pointer; 
+  transition: background .12s, transform .12s;
+  background: transparent;
+}
+.vehicle-item:hover { 
+    background: rgba(11,17,34,0.03); 
+    transform: translateY(-3px); 
+    box-shadow: 0 10px 20px rgba(12,20,33,0.04); 
+}
+.vehicle-item.active {
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    border-left: 4px solid var(--accent);
+}
+
+.vehicle-icon { 
+    width: 42px; 
+    height: 42px; 
+    border-radius: 10px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-weight: 800; 
+    color: #fff; 
+    background: var(--accent); 
+}
+.vehicle-info { display: flex; flex-direction: column; gap: 2px; }
+.vehicle-info h3 { margin: 0; font-size: 15px; }
+.vehicle-info small { color: var(--muted); font-size: 13px; }
+
+/* Skeletons para carga */
+.skeleton-item { display:flex; align-items:center; padding:15px; border-radius:10px; background:#fff; }
+.skeleton-icon { width:40px; height:40px; background:#e0e0e0; border-radius:50%; margin-right:15px; animation: skeleton-pulse 1.5s infinite ease-in-out; }
+.skeleton-info { flex:1; }
+.skel-line { height:12px; background: linear-gradient(90deg,#eee,#f6f6f6,#eee); border-radius:6px; margin-bottom: 5px;}
+@keyframes skeleton-pulse { 0%{background-color:#e0e0e0}50%{background-color:#f0f0f0}100%{background-color:#e0e0e0} }
+
+
+/* ========== Right detail panel (Detalle / Formulario) ========== */
+.vehicle-detail {
+  flex: 1; 
+  background: var(--surface); 
+  border-radius: var(--radius-lg); 
+  padding: 24px; 
+  box-shadow: var(--shadow); 
+  display: flex; 
+  flex-direction: column; 
+  gap: 14px;
+}
+
+/* Formulario */
+#vehicle-form {
+  display: flex; 
+  flex-direction: column; 
+  width: 100%;
+  background: transparent; 
+  padding: 0; 
+  box-shadow: none;
+}
+#vehicle-form h2 { margin: 0 0 16px 0; font-size: 1.25rem; }
+
+/* Contenedores de inputs */
+#vehicle-form > div { margin-bottom: 15px; }
+
+#vehicle-form label { 
+    display: block;
+    font-size: .9rem; 
+    font-weight: 600; 
+    color: var(--muted); 
+    margin-bottom: 6px; 
+}
+
+#vehicle-form input[type="text"], 
+#vehicle-form input[type="number"], 
+#vehicle-form select {
+  padding: 10px 12px; 
+  border-radius: 10px; 
+  border: 1px solid rgba(15,23,36,0.1); 
+  background: white; 
+  font-size: .95rem; 
+  width: 100%;
+  box-sizing: border-box; 
+  outline: none; 
+  transition: box-shadow .12s, border-color .12s;
+}
+
+#vehicle-form input:focus, 
+#vehicle-form select:focus { 
+    border-color: rgba(108,140,255,0.9); 
+    box-shadow: 0 0 0 4px rgba(108,140,255,0.08); 
+}
+#vehicle-form input::placeholder { color: rgba(15,23,36,0.35); }
+
+/* ========== Botones ========== */
+.form-actions {
+  display: flex; 
+  gap: 10px; 
+  margin-top: 20px; 
+  justify-content: flex-end; 
+  align-items: center;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--accent), #8fa8ff); 
+  color: white; 
+  border: none; 
+  padding: 10px 16px; 
+  border-radius: 10px; 
+  font-weight: 700; 
+  cursor: pointer; 
+  box-shadow: 0 6px 18px rgba(12,20,33,0.08);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(12,20,33,0.12); }
+
+.btn-secondary { 
+    background: transparent; 
+    color: var(--text); 
+    border: 1px solid rgba(15,23,36,0.15); 
+    padding: 10px 16px; 
+    border-radius: 10px; 
+    cursor: pointer; 
+    font-weight: 600; 
+    transition: background 0.1s;
+}
+.btn-secondary:hover { background: rgba(15,23,36,0.03); }
+
+/* Disabled & hidden */
+button:disabled, .btn-disabled { opacity:.6; cursor:not-allowed; }
+.hidden { display:none !important; }
+
+/* ========== Responsive ========== */
+@media (max-width: 992px) {
+  #sidebar + .vehicles-container { margin-left: 0; margin-top: 70px; width: 100%; transition: none; }
+  .vehicles-container { flex-direction: column; padding: 16px; gap: 16px; }
+  .vehicles-list { width: 100%; order: 1; }
+  .vehicle-detail { order: 2; width: 100%; }
+  #search-vehicle { margin-right: 12px; }
+}
+
+@media (max-width: 420px) {
+  .form-actions { flex-direction: column-reverse; gap: 10px; align-items: stretch; }
+  .btn-primary, .btn-secondary { width: 100%; }
+}
+
+/* Accessibility */
+a:focus, button:focus, input:focus { outline: 3px solid rgba(108,140,255,0.14); outline-offset: 2px; }

@@ -1,0 +1,45 @@
+<section id="principal" style="padding: 20px; overflow-y: auto; height: 100%;">
+    <div class="choferes-container">
+        <aside class="choferes-list">
+            <div class="list-header">
+                <input id="search-driver" type="search" placeholder="Buscar..." aria-label="Buscar chofer" />
+                <button id="btn-new-chofer"><i class="fa-solid fa-plus"></i> Nuevo</button>
+            </div>
+            <ul id="chofer-items"></ul>
+        </aside>
+
+        <section class="chofer-detail" id="chofer-detail">
+            <p id="initial-message">Selecciona un chofer para ver sus detalles.</p>
+        </section>
+    </div>
+</section>
+
+<template id="driver-form-template">
+    <form id="driver-form" class="standard-form">
+        <h2 id="form-title">Nuevo Chofer</h2>
+        <div class="form-group">
+            <label for="driver-id">ID Interno (Empleado)</label>
+            <input type="text" id="driver-id" placeholder="CH-001" required />
+        </div>
+        <div class="form-group">
+            <label for="driver-name">Nombre Completo</label>
+            <input type="text" id="driver-name" placeholder="Juan Pérez" required />
+        </div>
+        <div class="form-group">
+            <label for="driver-license">No. Licencia de Conducir</label>
+            <input type="text" id="driver-license" placeholder="L12345678" required />
+        </div>
+        <div class="form-group">
+            <label for="driver-phone">Teléfono</label>
+            <input type="tel" id="driver-phone" placeholder="55 1234 5678" />
+        </div>
+        <div class="form-group">
+            <label for="driver-email">Correo Electrónico</label>
+            <input type="email" id="driver-email" placeholder="juan@empresa.com" />
+        </div>
+        <div class="form-actions" style="margin-top: 20px;">
+            <button type="submit" class="primary-btn">Guardar</button>
+            <button type="button" id="btn-cancel-form" class="secondary-btn">Cancelar</button>
+        </div>
+    </form>
+</template>
