@@ -1,6 +1,6 @@
 // routes/api/mapproxy.js
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 
 const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || process.env.GMAPS_STATIC_KEY || '';
 
@@ -37,7 +37,7 @@ router.get('/', async (req, res) => {
 
         // 5. Petición a Google
         const fetchFn = global.fetch || require('node-fetch');
-        const imgRes  = await fetchFn(url);
+        const imgRes = await fetchFn(url);
 
         if (!imgRes.ok) {
             const errorText = await imgRes.text();
@@ -46,9 +46,11 @@ router.get('/', async (req, res) => {
         }
 
         const contentType = imgRes.headers.get('content-type') || 'image/png';
-        const buffer      = await imgRes.arrayBuffer();
+        const buffer = await imgRes.arrayBuffer();
 
         res.set('Content-Type', contentType);
+        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+        res.set('Access-Control-Allow-Origin', '*');
         res.set('Cache-Control', 'public, max-age=3600');
         res.send(Buffer.from(buffer));
 
