@@ -9,7 +9,7 @@ import {
     fetchVehicles,
     fetchRecorrido,
     buildProxyMapUrl
-} from '../api/reports.api.js';
+} from '../../api/reports.api.js';
 
 // ─── Estado global ────────────────────────────────────────────────────────────
 const state = {
@@ -253,14 +253,32 @@ const PDFManager = {
         document.getElementById('pdf-modal-overlay')?.removeAttribute('style');
     },
 
-    _header(title) {
-        const now = new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
+    async _logoBase64() {
+        try {
+            const res = await fetch('/img/logo.png');
+            if (!res.ok) return null;
+            const blob = await res.blob();
+            return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror   = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch {
+            return null;
+        }
+    },
+
+    async _header(title) {
+        const now      = new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
+        const logoB64  = await this._logoBase64();
+        const logoHtml = logoB64
+            ? `<img src="${logoB64}" alt="NUMA" style="height:36px;" />`
+            : '';
         return `
             <div class="pdf-report-header">
                 <div class="pdf-logo-area">
-                    <img src="/assets/logo.svg" alt="NUMA"
-                         onerror="this.style.display='none'"
-                         style="height:36px;" />
+                    ${logoHtml}
                     <span class="pdf-brand">NUMA Tracking</span>
                 </div>
                 <div class="pdf-report-meta">
@@ -283,8 +301,9 @@ const PDFManager = {
             routes.map(r => ReportService.fetchRecorrido(r._id || r.id))
         );
 
+        const header1 = await this._header(elements.reportTitle?.textContent || 'Reporte');
         this._setContent(
-            this._header(elements.reportTitle?.textContent || 'Reporte') +
+            header1 +
             `<div class="pdf-routes-list">
                 ${routes.map((r, i) => this._buildRouteCard(r, recorridos[i])).join('')}
             </div>`
@@ -294,8 +313,9 @@ const PDFManager = {
     async openSingleDetail(route) {
         this._openModal();
         const recorrido = await ReportService.fetchRecorrido(route._id || route.id);
+        const header2 = await this._header('Detalle de Ruta');
         this._setContent(
-            this._header('Detalle de Ruta') +
+            header2 +
             `<div class="pdf-routes-list">${this._buildRouteCard(route, recorrido)}</div>`
         );
     },
