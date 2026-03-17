@@ -5,6 +5,7 @@ import '../../css/loader.css';
 import { showLoader, hideLoader } from '../utils/loader.js';
 import { showNotification } from '../utils/utils.ui.js';
 import { fetchVehicles, saveVehicle, deleteVehicle } from '../api/vehicles.api.js';
+import { checkLicense } from '../utils/license.js';
 
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let vehiclesList = [];
@@ -15,6 +16,8 @@ let elements = {};
 // ─── Inicialización ───────────────────────────────────────────────────────────
 export async function init() {
     console.log('🚛 Módulo de Vehículos iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
     showLoader();
 
     try {
@@ -30,11 +33,11 @@ export async function init() {
 
 function cacheElements() {
     elements = {
-        listContainer:  document.getElementById('vehicle-items'),
-        detailContainer:document.getElementById('vehicle-detail'),
-        btnNew:         document.getElementById('btn-new-vehicle'),
-        searchInput:    document.getElementById('search-vehicle'),
-        formTemplate:   document.getElementById('vehicle-form-template')
+        listContainer: document.getElementById('vehicle-items'),
+        detailContainer: document.getElementById('vehicle-detail'),
+        btnNew: document.getElementById('btn-new-vehicle'),
+        searchInput: document.getElementById('search-vehicle'),
+        formTemplate: document.getElementById('vehicle-form-template')
     };
 }
 
@@ -92,11 +95,11 @@ async function handleFormSubmit(e, vehicle, inputs) {
     const { inputId, inputAlias, inputMarca, inputModelo, inputYear } = inputs;
 
     const vehicleData = {
-        id:     inputId.value.trim(),
-        alias:  inputAlias.value.trim(),
-        marca:  inputMarca.value.trim(),
+        id: inputId.value.trim(),
+        alias: inputAlias.value.trim(),
+        marca: inputMarca.value.trim(),
         modelo: inputModelo.value.trim(),
-        anio:   inputYear.value.trim()
+        anio: inputYear.value.trim()
     };
 
     const editingId = isEditing ? vehicle.id : null;
@@ -200,22 +203,22 @@ const UI = {
         elements.detailContainer.innerHTML = '';
         elements.detailContainer.appendChild(template);
 
-        const form        = document.getElementById('vehicle-form');
-        const title       = document.getElementById('form-title');
-        const inputId     = document.getElementById('vehicle-id');
-        const inputAlias  = document.getElementById('vehicle-alias');
-        const inputMarca  = document.getElementById('vehicle-marca');
+        const form = document.getElementById('vehicle-form');
+        const title = document.getElementById('form-title');
+        const inputId = document.getElementById('vehicle-id');
+        const inputAlias = document.getElementById('vehicle-alias');
+        const inputMarca = document.getElementById('vehicle-marca');
         const inputModelo = document.getElementById('vehicle-modelo');
-        const inputYear   = document.getElementById('vehicle-year');
+        const inputYear = document.getElementById('vehicle-year');
 
         if (vehicle) {
             title.textContent = 'Editar Vehículo';
-            inputId.value     = vehicle.id;
-            inputId.disabled  = true;
-            inputAlias.value  = vehicle.alias  || '';
-            inputMarca.value  = vehicle.marca  || '';
+            inputId.value = vehicle.id;
+            inputId.disabled = true;
+            inputAlias.value = vehicle.alias || '';
+            inputMarca.value = vehicle.marca || '';
             inputModelo.value = vehicle.modelo || '';
-            inputYear.value   = vehicle.anio   || '';
+            inputYear.value = vehicle.anio || '';
         } else {
             title.textContent = 'Nuevo Vehículo';
         }

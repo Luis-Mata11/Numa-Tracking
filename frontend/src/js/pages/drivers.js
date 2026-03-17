@@ -6,6 +6,9 @@ import { showLoader, hideLoader } from '../utils/loader.js';
 import { showNotification } from '../utils/utils.ui.js';
 import { fetchDrivers, saveDriver, deleteDriver } from '../api/drivers.api.js';
 
+import { checkLicense } from '../utils/license.js';
+
+
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let driversList = [];
 let currentDriver = null;
@@ -15,6 +18,8 @@ let elements = {};
 // ─── Inicialización ───────────────────────────────────────────────────────────
 export async function init() {
     console.log('🚗 Módulo de Choferes iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
     showLoader();
 
     try {
@@ -30,11 +35,11 @@ export async function init() {
 
 function cacheElements() {
     elements = {
-        listContainer:  document.getElementById('chofer-items'),
-        detailContainer:document.getElementById('chofer-detail'),
-        btnNew:         document.getElementById('btn-new-chofer'),
-        searchInput:    document.getElementById('search-driver'),
-        formTemplate:   document.getElementById('driver-form-template')
+        listContainer: document.getElementById('chofer-items'),
+        detailContainer: document.getElementById('chofer-detail'),
+        btnNew: document.getElementById('btn-new-chofer'),
+        searchInput: document.getElementById('search-driver'),
+        formTemplate: document.getElementById('driver-form-template')
     };
 }
 
@@ -91,11 +96,11 @@ async function handleFormSubmit(e, driver, inputs) {
     const { inputId, inputNombre, inputLicencia, inputTelefono, inputEmail } = inputs;
 
     const driverData = {
-        id:       inputId.value.trim(),
-        nombre:   inputNombre.value.trim(),
+        id: inputId.value.trim(),
+        nombre: inputNombre.value.trim(),
         licencia: inputLicencia.value.trim(),
         telefono: inputTelefono.value.trim(),
-        email:    inputEmail.value.trim()
+        email: inputEmail.value.trim()
     };
 
     const editingId = isEditing ? driver.id : null;
@@ -199,22 +204,22 @@ const UI = {
         elements.detailContainer.innerHTML = '';
         elements.detailContainer.appendChild(template);
 
-        const form          = document.getElementById('driver-form');
-        const title         = document.getElementById('form-title');
-        const inputId       = document.getElementById('driver-id');
-        const inputNombre   = document.getElementById('driver-name');
+        const form = document.getElementById('driver-form');
+        const title = document.getElementById('form-title');
+        const inputId = document.getElementById('driver-id');
+        const inputNombre = document.getElementById('driver-name');
         const inputLicencia = document.getElementById('driver-license');
         const inputTelefono = document.getElementById('driver-phone');
-        const inputEmail    = document.getElementById('driver-email');
+        const inputEmail = document.getElementById('driver-email');
 
         if (driver) {
-            title.textContent    = 'Editar Chofer';
-            inputId.value        = driver.id;
-            inputId.disabled     = true;
-            inputNombre.value    = driver.nombre   || '';
-            inputLicencia.value  = driver.licencia || '';
-            inputTelefono.value  = driver.telefono || '';
-            inputEmail.value     = driver.email    || '';
+            title.textContent = 'Editar Chofer';
+            inputId.value = driver.id;
+            inputId.disabled = true;
+            inputNombre.value = driver.nombre || '';
+            inputLicencia.value = driver.licencia || '';
+            inputTelefono.value = driver.telefono || '';
+            inputEmail.value = driver.email || '';
         } else {
             title.textContent = 'Nuevo Chofer';
         }

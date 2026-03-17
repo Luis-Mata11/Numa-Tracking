@@ -8,8 +8,9 @@
 //   2. Impórtalo aquí y agrégalo al objeto SECTION_MODULES con el data-target del tab
 
 import '../../css/settings.css';
-import { logout }           from '../api/settings.api.js';
-import * as BasesModule     from '../modules/settings/bases.settings.js';
+import { logout } from '../api/settings.api.js';
+import * as BasesModule from '../modules/settings/bases.settings.js';
+import { checkLicense } from '../utils/license.js';
 // import * as ProfileModule from '../modules/settings/profile.settings.js';  ← ejemplo futuro
 // import * as NotifModule   from '../modules/settings/notifications.settings.js';
 
@@ -26,24 +27,24 @@ const SECTION_MODULES = {
 function _cacheDOMForBases() {
     return {
         // Formulario
-        latInput:     document.getElementById('base-lat'),
-        lngInput:     document.getElementById('base-lng'),
+        latInput: document.getElementById('base-lat'),
+        lngInput: document.getElementById('base-lng'),
         addressInput: document.getElementById('base-address'),
-        nameInput:    document.getElementById('base-name'),
-        idInput:      document.getElementById('base-id'),
-        form:         document.getElementById('form-base-config'),
-        btnGeo:       document.getElementById('btn-geo'),
+        nameInput: document.getElementById('base-name'),
+        idInput: document.getElementById('base-id'),
+        form: document.getElementById('form-base-config'),
+        btnGeo: document.getElementById('btn-geo'),
         // Lista
-        btnNewBase:   document.getElementById('btn-new-base'),
-        basesUl:      document.getElementById('bases-list'),
+        btnNewBase: document.getElementById('btn-new-base'),
+        basesUl: document.getElementById('bases-list'),
         // Drawer
-        drawer:       document.getElementById('base-side-drawer'),
+        drawer: document.getElementById('base-side-drawer'),
         btnCloseDrawer: document.getElementById('btn-close-drawer'),
-        drawerTitle:  document.getElementById('drawer-title'),
+        drawerTitle: document.getElementById('drawer-title'),
         // Modal
-        modal:        document.getElementById('base-view-modal'),
+        modal: document.getElementById('base-view-modal'),
         btnCloseModal: document.getElementById('btn-close-modal'),
-        modalTitle:   document.getElementById('modal-view-title'),
+        modalTitle: document.getElementById('modal-view-title'),
         modalAddress: document.getElementById('modal-view-address')
     };
 }
@@ -51,7 +52,7 @@ function _cacheDOMForBases() {
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function _setupTabs() {
     const menuItems = document.querySelectorAll('.settings-item');
-    const views     = document.querySelectorAll('.settings-view');
+    const views = document.querySelectorAll('.settings-view');
 
     menuItems.forEach(item => {
         item.addEventListener('click', () => {
@@ -59,7 +60,7 @@ function _setupTabs() {
             views.forEach(v => { v.classList.remove('active'); v.classList.add('hidden'); });
 
             item.classList.add('active');
-            const targetId   = item.dataset.target;
+            const targetId = item.dataset.target;
             const targetView = document.getElementById(`view-${targetId}`);
             targetView?.classList.remove('hidden');
             targetView?.classList.add('active');
@@ -90,6 +91,10 @@ function _setupLogout() {
 // ─── Inicialización ───────────────────────────────────────────────────────────
 export function init() {
     console.log('⚙️ Módulo de Settings iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
 
     if (!document.getElementById('view-base')) {
         console.warn('⚠️ El HTML de settings no está listo aún.');

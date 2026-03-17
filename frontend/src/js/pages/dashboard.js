@@ -10,6 +10,11 @@ import {
     finalizeRoute
 } from '../api/dashboard.api.js';
 
+import { checkLicense } from '../utils/license.js';
+
+
+
+
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let map               = null;
 let socket            = null;
@@ -357,6 +362,7 @@ const App = {
 // ─── Inicialización ───────────────────────────────────────────────────────────
 export async function init() {
     console.log('🗺️ Módulo Dashboard iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
 
     if (typeof window.Auth !== 'undefined' && !window.Auth.isLoggedIn()) {
         window.location.href = '/login.html';

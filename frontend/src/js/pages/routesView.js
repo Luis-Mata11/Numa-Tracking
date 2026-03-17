@@ -12,6 +12,7 @@ import { setRoutes } from '../state/routes.store.js';
 import { renderRoutes } from '../ui/list.ui.js';
 import { fetchRoutes, fetchVehicles, fetchDrivers, saveRoute, deleteRoute } from '../api/routes.api.js';
 // ... tus imports arriba ...
+import { checkLicense } from '../utils/license.js';
 
 // Vite inyectará la URL correcta dependiendo del entorno
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
@@ -21,6 +22,8 @@ let currentDrivers = [];
 
 export async function init() {
     console.log('🛣️ Módulo de Rutas iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
     showLoader();
 
     try {

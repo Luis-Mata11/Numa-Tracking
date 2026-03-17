@@ -11,12 +11,15 @@ import {
     buildProxyMapUrl
 } from '../api/reports.api.js';
 
+import { checkLicense } from '../utils/license.js';
+
+
 // ─── Estado global ────────────────────────────────────────────────────────────
 const state = {
-    routes:           [],
-    drivers:          [],
-    vehicles:         [],
-    filteredRoutes:   [],
+    routes: [],
+    drivers: [],
+    vehicles: [],
+    filteredRoutes: [],
     activeDateFilter: 'day'
 };
 
@@ -28,13 +31,13 @@ function getCompletionDate(route) {
 }
 
 function getDriverName(route) {
-    const id  = route.driver?._id || route.driver?.id || route.driver;
+    const id = route.driver?._id || route.driver?.id || route.driver;
     const obj = state.drivers.find(d => String(d._id || d.id) === String(id)) || {};
     return obj.nombre || route.driver?.nombre || 'No asignado';
 }
 
 function getVehicleName(route) {
-    const id  = route.vehicle?._id || route.vehicle?.id || route.vehicle;
+    const id = route.vehicle?._id || route.vehicle?.id || route.vehicle;
     const obj = state.vehicles.find(v => String(v._id || v.id) === String(id)) || {};
     return obj.alias || obj.placa || route.vehicle?.alias || 'No asignado';
 }
@@ -98,22 +101,22 @@ const UI = {
     },
 
     populateFilterValues() {
-        const filterType  = elements.filterType.value;
+        const filterType = elements.filterType.value;
         const valueSelect = elements.filterValue;
         valueSelect.innerHTML = '';
-        valueSelect.disabled  = true;
+        valueSelect.disabled = true;
 
         if (filterType === 'all') {
             valueSelect.innerHTML = '<option value="">-- Elige un tipo de filtro --</option>';
             return;
         }
 
-        const data        = filterType === 'driver' ? state.drivers : state.vehicles;
+        const data = filterType === 'driver' ? state.drivers : state.vehicles;
         const defaultText = filterType === 'driver' ? 'Todos los choferes' : 'Todos los vehículos';
         let html = `<option value="">${defaultText}</option>`;
 
         data.forEach(item => {
-            const id   = item._id || item.id;
+            const id = item._id || item.id;
             const name = item.nombre
                 || item.alias
                 || `${item.marca || ''} ${item.modelo || ''}`.trim()
@@ -122,7 +125,7 @@ const UI = {
         });
 
         valueSelect.innerHTML = html;
-        valueSelect.disabled  = false;
+        valueSelect.disabled = false;
     },
 
     renderResults(routesToRender) {
@@ -138,11 +141,11 @@ const UI = {
         }
 
         elements.resultsGrid.innerHTML = routesToRender.map(route => {
-            const driverName  = getDriverName(route);
+            const driverName = getDriverName(route);
             const vehicleName = getVehicleName(route);
-            const dateStr     = getCompletionDate(route).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
-            const distancia   = route.trayecto?.distancia_metros;
-            const duracion    = route.trayecto?.tiempo_estimado_segundos;
+            const dateStr = getCompletionDate(route).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+            const distancia = route.trayecto?.distancia_metros;
+            const duracion = route.trayecto?.tiempo_estimado_segundos;
 
             return `
                 <div class="route-card">
@@ -155,7 +158,7 @@ const UI = {
                         <p><i class="fa-solid fa-user"></i> <strong>Chofer:</strong> ${driverName}</p>
                         <p><i class="fa-solid fa-truck"></i> <strong>Vehículo:</strong> ${vehicleName}</p>
                         ${distancia ? `<p><i class="fa-solid fa-route"></i> <strong>Distancia:</strong> ${formatDistance(distancia)}</p>` : ''}
-                        ${duracion  ? `<p><i class="fa-regular fa-clock"></i> <strong>Tiempo est.:</strong> ${formatDuration(duracion)}</p>` : ''}
+                        ${duracion ? `<p><i class="fa-regular fa-clock"></i> <strong>Tiempo est.:</strong> ${formatDuration(duracion)}</p>` : ''}
                         <p><i class="fa-solid fa-check-circle" style="color:#10b981;"></i> <strong>Estatus:</strong> Finalizada</p>
                     </div>
                     <div class="card-footer">
@@ -188,7 +191,7 @@ const UI = {
 const FilterLogic = {
     applyFilters() {
         let result = [...state.routes];
-        const now  = new Date();
+        const now = new Date();
 
         if (state.activeDateFilter === 'day') {
             const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -196,8 +199,8 @@ const FilterLogic = {
             if (elements.reportTitle) elements.reportTitle.textContent = 'Reporte de Hoy';
 
         } else if (state.activeDateFilter === 'week') {
-            const day   = now.getDay();
-            const diff  = day === 0 ? -6 : 1 - day;
+            const day = now.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
             const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
             result = result.filter(r => getCompletionDate(r) >= start);
             if (elements.reportTitle) elements.reportTitle.textContent = 'Reporte de la Semana';
@@ -207,7 +210,7 @@ const FilterLogic = {
             if (monthValue) {
                 const [year, month] = monthValue.split('-').map(Number);
                 const start = new Date(year, month - 1, 1);
-                const end   = new Date(year, month, 1);
+                const end = new Date(year, month, 1);
                 result = result.filter(r => {
                     const d = getCompletionDate(r);
                     return d >= start && d < end;
@@ -219,12 +222,12 @@ const FilterLogic = {
             }
         }
 
-        const filterType  = elements.filterType?.value;
+        const filterType = elements.filterType?.value;
         const filterValue = elements.filterValue?.value;
         if (filterType !== 'all' && filterValue) {
             result = result.filter(route => {
                 const id = filterType === 'driver'
-                    ? (route.driver?._id  || route.driver?.id  || route.driver)
+                    ? (route.driver?._id || route.driver?.id || route.driver)
                     : (route.vehicle?._id || route.vehicle?.id || route.vehicle);
                 return String(id) === String(filterValue);
             });
@@ -261,7 +264,7 @@ const PDFManager = {
             return await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result);
-                reader.onerror   = () => resolve(null);
+                reader.onerror = () => resolve(null);
                 reader.readAsDataURL(blob);
             });
         } catch {
@@ -270,8 +273,8 @@ const PDFManager = {
     },
 
     async _header(title) {
-        const now      = new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
-        const logoB64  = await this._logoBase64();
+        const now = new Date().toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
+        const logoB64 = await this._logoBase64();
         const logoHtml = logoB64
             ? `<img src="${logoB64}" alt="NUMA" style="height:36px;" />`
             : '';
@@ -317,9 +320,9 @@ const PDFManager = {
 
     async openSingleDetail(route) {
         this._openModal();
-        const recorrido  = await ReportService.fetchRecorrido(route._id || route.id);
+        const recorrido = await ReportService.fetchRecorrido(route._id || route.id);
         const mapImageB64 = await this._fetchMapBase64(route, recorrido);
-        const header2    = await this._header('Detalle de Ruta');
+        const header2 = await this._header('Detalle de Ruta');
         this._setContent(
             header2 +
             `<div class="pdf-routes-list">${this._buildRouteCard(route, recorrido, mapImageB64)}</div>`
@@ -329,12 +332,12 @@ const PDFManager = {
     async _fetchMapBase64(route, recorridoData) {
         try {
             const posiciones = recorridoData?.recorrido?.posiciones || [];
-            const hasMap     = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
+            const hasMap = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
             if (!hasMap) return null;
 
             const mapUrl = buildProxyMapUrl({
                 encodedPolyline: route.trayecto?.encodedPolyline,
-                realPositions:   posiciones
+                realPositions: posiciones
             });
 
             const res = await fetch(mapUrl);
@@ -344,7 +347,7 @@ const PDFManager = {
             return await new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result);
-                reader.onerror   = () => resolve(null);
+                reader.onerror = () => resolve(null);
                 reader.readAsDataURL(blob);
             });
         } catch {
@@ -353,19 +356,19 @@ const PDFManager = {
     },
 
     _buildRouteCard(route, recorridoData, mapB64 = null) {
-        const driverName   = getDriverName(route);
-        const vehicleName  = getVehicleName(route);
-        const dateStr      = getCompletionDate(route).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
+        const driverName = getDriverName(route);
+        const vehicleName = getVehicleName(route);
+        const dateStr = getCompletionDate(route).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
         const distPlaneada = formatDistance(route.trayecto?.distancia_metros);
-        const tiempoEst    = formatDuration(route.trayecto?.tiempo_estimado_segundos);
+        const tiempoEst = formatDuration(route.trayecto?.tiempo_estimado_segundos);
 
-        const recorrido    = recorridoData?.recorrido || null;
-        const posiciones   = recorrido?.posiciones    || [];
-        const distReal     = formatDistance(recorrido?.distanciaMetros);
-        const desviaciones = recorrido?.desviaciones  ?? '—';
-        const eventos      = (recorridoData?.bitacora || []).filter(e => e.action !== 'trace');
+        const recorrido = recorridoData?.recorrido || null;
+        const posiciones = recorrido?.posiciones || [];
+        const distReal = formatDistance(recorrido?.distanciaMetros);
+        const desviaciones = recorrido?.desviaciones ?? '—';
+        const eventos = (recorridoData?.bitacora || []).filter(e => e.action !== 'trace');
 
-        const hasMap  = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
+        const hasMap = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
         // mapB64 viene pre-cargado como base64 para que html2canvas lo capture sin CORS
         const mapHtml = (hasMap && mapB64)
             ? `<img src="${mapB64}" class="pdf-map-img" alt="Mapa comparativo" />`
@@ -379,7 +382,7 @@ const PDFManager = {
         const eventosHtml = eventos.length
             ? eventos.map(e => `
                 <div class="pdf-event-row">
-                    <span>${{ desvio:'⚠️', reingreso:'✅', start:'🚀', complete:'🏁', stop:'🛑' }[e.action] || '•'}</span>
+                    <span>${{ desvio: '⚠️', reingreso: '✅', start: '🚀', complete: '🏁', stop: '🛑' }[e.action] || '•'}</span>
                     <span class="pdf-event-desc">${e.description || e.action}</span>
                     <span class="pdf-event-time">
                         ${new Date(e.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
@@ -455,21 +458,21 @@ const PDFManager = {
 
         const btn = document.getElementById('btn-export-pdf');
         if (btn) {
-            btn.disabled   = true;
-            btn.innerHTML  = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando...';
         }
 
         await html2pdf().set({
-            margin:      [10, 10, 10, 10],
-            filename:    `NUMA_Reporte_${new Date().toISOString().slice(0, 10)}.pdf`,
-            image:       { type: 'jpeg', quality: 0.95 },
+            margin: [10, 10, 10, 10],
+            filename: `NUMA_Reporte_${new Date().toISOString().slice(0, 10)}.pdf`,
+            image: { type: 'jpeg', quality: 0.95 },
             html2canvas: { scale: 2, useCORS: false, logging: false },
-            jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         }).from(element).save();
 
         if (btn) {
-            btn.disabled  = false;
+            btn.disabled = false;
             btn.innerHTML = '<i class="fa-solid fa-download"></i> Descargar PDF';
         }
     }
@@ -479,9 +482,9 @@ const PDFManager = {
 const App = {
     async loadData() {
         try {
-            const data     = await ReportService.fetchData();
-            state.routes   = data.routes;
-            state.drivers  = data.drivers;
+            const data = await ReportService.fetchData();
+            state.routes = data.routes;
+            state.drivers = data.drivers;
             state.vehicles = data.vehicles;
             UI.setDefaultMonth();
             FilterLogic.applyFilters();
@@ -495,13 +498,15 @@ const App = {
 // ─── Inicialización ───────────────────────────────────────────────────────────
 export async function init() {
     console.log('📊 Módulo de Reportes iniciado');
+    if (!checkLicense()) return; // ← síncrono, sin await necesario
+
     showLoader();
 
     try {
         elements = {
-            filterType:  document.getElementById('filter-type'),
+            filterType: document.getElementById('filter-type'),
             filterValue: document.getElementById('filter-value'),
-            monthInput:  document.getElementById('month-filter-input'),
+            monthInput: document.getElementById('month-filter-input'),
             reportTitle: document.getElementById('report-title'),
             resultsGrid: document.getElementById('report-results')
         };
@@ -530,10 +535,10 @@ export async function init() {
         });
         elements.filterValue?.addEventListener('change', () => FilterLogic.applyFilters());
 
-        document.getElementById('btn-preview-pdf')?.addEventListener('click',   () => PDFManager.open());
-        document.getElementById('btn-close-modal')?.addEventListener('click',   () => PDFManager.close());
+        document.getElementById('btn-preview-pdf')?.addEventListener('click', () => PDFManager.open());
+        document.getElementById('btn-close-modal')?.addEventListener('click', () => PDFManager.close());
         document.getElementById('pdf-modal-overlay')?.addEventListener('click', () => PDFManager.close());
-        document.getElementById('btn-export-pdf')?.addEventListener('click',    () => PDFManager.exportPDF());
+        document.getElementById('btn-export-pdf')?.addEventListener('click', () => PDFManager.exportPDF());
 
         await App.loadData();
 
