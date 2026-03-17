@@ -1,168 +1,148 @@
 // src/js/pages/dashboard.js
-import '../../css/dashboard.css'; // <-- VITE HARÁ LA MAGIA CON ESTO
-import '../../css/loader.css'; // Importamos el CSS del loader
-import { showLoader, hideLoader } from '../utils/loader.js'; 
 
-// Variables de estado encapsuladas en el módulo
-let map;
-let socket;
-let routePolylines = {};
-let driverMarkers = {};
-let activeRouteId = null;
-let lastKnownLocations = {};
-let vehiculoSeleccionado = null;
-let directionsService, directionsRenderer;
-let routes = [], drivers = [], vehicles = [];
-let actualPathPolylines = {}; // 👈 NUEVA VARIABLE: Guardará las líneas azules por driverId
-let routeStaticMarkers = {}; // 👈 NUEVA: Guardará marcadores de inicio/fin/paradas/infoWindows
-let pendingConfirmations = new Set(); //
+import '../../css/dashboard.css';
+import '../../css/loader.css';
+import { showLoader, hideLoader } from '../utils/loader.js';
+import {
+    fetchBaseCoords,
+    fetchRoutes,
+    fetchDrivers,
+    finalizeRoute
+} from '../api/dashboard.api.js';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// ─── Estado del módulo ────────────────────────────────────────────────────────
+let map               = null;
+let socket            = null;
+let directionsService = null;
+let directionsRenderer= null;
+let routes            = [];
+let drivers           = [];
+let routePolylines    = {};      // Líneas de ruta base (gris + color)
+let actualPathPolylines = {};    // Líneas de recorrido real (azul) por driverId
+let driverMarkers     = {};      // Marcadores de vehículos en movimiento
+let routeStaticMarkers= {};      // Pines e InfoWindows estáticos por routeId
+let lastKnownLocations= {};      // Última ubicación conocida por driverId
+let activeRouteId     = null;
+let pendingConfirmations = new Set();
 
-const DashboardService = {
-    getHeaders() {
-        const token = sessionStorage.getItem('numa_token');
-        return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-    },
-    // En DashboardService (dashboard.js)
-    // En DashboardService (dashboard.js)
-    async getBaseConfig() {
-        const res = await fetch(`${API_URL}/bases`, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error("Sin configuración");
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-        const data = await res.json();
-
-        // 🕵️‍♂️ LÍNEAS DE DEPURACIÓN: Vamos a ver qué trae esto realmente
-        console.log("👉 Data completa:", data);
-        console.log("👉 Buscando el ID:", data.defaultBaseId);
-
-        if (data.bases && data.bases.length > 0) {
-            // Hacemos la búsqueda considerando _id o id (Mongoose a veces hace de las suyas)
-            let basePrincipal = data.bases.find(b => {
-                const currentId = String(b._id || b.id);
-                const targetId = String(data.defaultBaseId);
-                return currentId === targetId;
-            });
-
-            if (!basePrincipal) {
-                // Si falla, que nos diga exactamente qué IDs tenía disponibles para comparar
-                console.warn("⚠️ Falló la coincidencia. IDs disponibles en bases:", data.bases.map(b => b._id || b.id));
-                basePrincipal = data.bases[0];
-            }
-
-            return {
-                lat: basePrincipal.ubicacion.coordinates[1],
-                lng: basePrincipal.ubicacion.coordinates[0]
-            };
-        }
-
-        throw new Error("No hay bases activas");
-    },
-    async getRoutes() {
-        const res = await fetch(`${API_URL}/routes`, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error('Error API Rutas');
-        return res.json();
-    },
-    async getDrivers() {
-        const res = await fetch(`${API_URL}/drivers`, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error('Error API Choferes');
-        return res.json();
-    }
-};
-
+// ─── UI ───────────────────────────────────────────────────────────────────────
 const UI = {
     showToast(message, duration = 3000) {
-        const existingToast = document.getElementById('toast-notification');
-        if (existingToast) existingToast.remove();
+        document.getElementById('toast-notification')?.remove();
 
         const toast = document.createElement('div');
         toast.id = 'toast-notification';
         toast.textContent = message;
         toast.style.cssText = `
-            position: fixed; bottom: 20px; right: 20px;
-            background-color: #2ecc71; color: white;
-            padding: 12px 20px; border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 9999; font-weight: 500;
+            position:fixed; bottom:20px; right:20px;
+            background:#2ecc71; color:#fff;
+            padding:12px 20px; border-radius:6px;
+            box-shadow:0 4px 12px rgba(0,0,0,.15);
+            z-index:9999; font-weight:500;
         `;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), duration);
     },
 
+    // FIX: Verificamos que cada elemento exista antes de asignar textContent
     updateKPIs(routesData) {
-        if (Array.isArray(routesData)) {
-            document.getElementById('kpi-activos').textContent = routesData.filter(r => r.estado === 'pendiente').length;
-            document.getElementById('kpi-rutas').textContent = routesData.filter(r => r.estado === 'en curso').length;
-            document.getElementById('kpi-alertas').textContent = routesData.filter(r => r.estado === 'finalizada').length;
-            document.getElementById('kpi-distancia').textContent = drivers.length; // Ejemplo de choferes activos
-        }
+        if (!Array.isArray(routesData)) return;
+
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        set('kpi-activos',   routesData.filter(r => r.estado === 'pendiente').length);
+        set('kpi-rutas',     routesData.filter(r => r.estado === 'en curso').length);
+        set('kpi-alertas',   routesData.filter(r => r.estado === 'finalizada').length);
+        set('kpi-distancia', drivers.length);
     },
 
     updateInfoPanel(route) {
-        document.getElementById('route-name-display').textContent = route.name || 'Sin asignar';
-        document.getElementById('route-id-display').textContent = route.id || '...';
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
 
-        let driverName = "Sin asignar";
+        set('route-name-display', route.name || 'Sin asignar');
+        set('route-id-display',   route.id   || '...');
+
+        let driverName = 'Sin asignar';
         if (route.driver) {
-            const d = drivers.find(dr => dr.id === route.driver || dr.id === route.driver.id);
+            const d = drivers.find(dr =>
+                dr.id === route.driver || dr.id === route.driver?.id
+            );
             if (d) driverName = d.name;
         }
-        document.getElementById('chofer-name-display').textContent = driverName;
+        set('chofer-name-display', driverName);
 
-        const lastLoc = route.driver ? lastKnownLocations[route.driver.id || route.driver] : null;
+        const lastLoc = route.driver
+            ? lastKnownLocations[route.driver?.id || route.driver]
+            : null;
         if (lastLoc) {
-            document.getElementById('coords-display').textContent = `${lastLoc.lat.toFixed(5)}, ${lastLoc.lng.toFixed(5)}`;
+            set('coords-display', `${lastLoc.lat.toFixed(5)}, ${lastLoc.lng.toFixed(5)}`);
         }
     }
 };
 
+// ─── Mapa ─────────────────────────────────────────────────────────────────────
 const MapManager = {
     async init() {
-        const drawMapEl = document.getElementById("draw-map");
-        if (!drawMapEl) return;
+        const mapEl = document.getElementById('draw-map');
+        if (!mapEl) return;
 
-        if (!window.google || !window.google.maps) {
-            document.getElementById('status');
-            // 👇 Convertimos la espera en una Promesa para que 'await' sí espere
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        // Esperamos a que Google Maps cargue
+        if (!window.google?.maps) {
+            await new Promise(r => setTimeout(r, 1000));
             return this.init();
         }
 
-        map = new window.google.maps.Map(drawMapEl, {
+        map = new window.google.maps.Map(mapEl, {
             center: { lat: 19.7677724, lng: -104.3686507 },
             zoom: 13,
-            styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }],
-            mapTypeControl: false, streetViewControl: false, fullscreenControl: true
+            styles: [{
+                featureType: 'poi',
+                elementType: 'labels',
+                stylers: [{ visibility: 'off' }]
+            }],
+            mapTypeControl:    false,
+            streetViewControl: false,
+            fullscreenControl: true
         });
 
-        directionsService = new window.google.maps.DirectionsService();
-        directionsRenderer = new window.google.maps.DirectionsRenderer({ map: map, draggable: true });
+        directionsService  = new window.google.maps.DirectionsService();
+        directionsRenderer = new window.google.maps.DirectionsRenderer({
+            map,
+            draggable: true
+        });
 
-        await this.loadBaseOperativa();
+        await this.loadBaseMarker();
     },
 
-    async loadBaseOperativa() {
+    async loadBaseMarker() {
         try {
-            const config = await DashboardService.getBaseConfig();
-            if (config && config.lat && config.lng) {
-                const basePos = { lat: parseFloat(config.lat), lng: parseFloat(config.lng) };
-                map.setCenter(basePos);
-                map.setZoom(15);
-                new window.google.maps.Marker({
-                    position: basePos, map: map, title: "Base Operativa",
-                    icon: {
-                        url: "/assets/base.svg", // Tu nuevo icono
-                        scaledSize: new window.google.maps.Size(42, 42), // Tamaño ideal
-                        anchor: new window.google.maps.Point(21, 42) // Apunta exactamente con el pico de abajo
-                    },
-                    zIndex: 1000 // Para que siempre quede por encima de las rutas
-                });
-                document.getElementById('status');
-            } else {
-                throw new Error("Config incompleta");
-            }
+            const coords = await fetchBaseCoords();
+            const pos    = { lat: parseFloat(coords.lat), lng: parseFloat(coords.lng) };
+
+            map.setCenter(pos);
+            map.setZoom(15);
+
+            new window.google.maps.Marker({
+                position: pos,
+                map,
+                title: 'Base Operativa',
+                icon: {
+                    url:        '/assets/base.svg',
+                    scaledSize: new window.google.maps.Size(42, 42),
+                    anchor:     new window.google.maps.Point(21, 42)
+                },
+                zIndex: 1000
+            });
         } catch (error) {
-            console.warn("Base operativa no cargada");
+            console.warn('Base operativa no cargada:', error.message);
             const modal = document.getElementById('modal-no-base');
             if (modal) modal.style.display = 'flex';
         }
@@ -170,30 +150,37 @@ const MapManager = {
 
     async drawRoutes(routesData) {
         // Limpiar rutas previas
-        for (const id in routePolylines) {
-            if (routePolylines[id].grey) routePolylines[id].grey.setMap(null);
-            if (routePolylines[id].color) routePolylines[id].color.setMap(null);
-        }
+        Object.values(routePolylines).forEach(({ grey, color }) => {
+            grey?.setMap(null);
+            color?.setMap(null);
+        });
         routePolylines = {};
 
-        const inProgress = routesData.filter(r => r.estado === 'en curso' && r.waypoints && r.waypoints.length > 0);
-        document.getElementById('status');
-        if (inProgress.length === 0) return;
+        const inProgress = routesData.filter(r =>
+            r.estado === 'en curso' && r.waypoints?.length > 0
+        );
+        if (!inProgress.length) return;
 
         const bounds = new window.google.maps.LatLngBounds();
 
         inProgress.forEach(route => {
-            const pathCoords = route.waypoints.map(wp => ({ lat: parseFloat(wp.lat), lng: parseFloat(wp.lng) }));
-            const routeColor = (route.status === 'cancelled') ? '#e74c3c' : (route.color || '#f357a1');
+            const pathCoords = route.waypoints.map(wp => ({
+                lat: parseFloat(wp.lat),
+                lng: parseFloat(wp.lng)
+            }));
+            const routeColor = route.status === 'cancelled'
+                ? '#e74c3c'
+                : (route.color || '#f357a1');
 
             const greyLine = new window.google.maps.Polyline({
-                path: pathCoords, geodesic: true, strokeColor: '#616142',
-                strokeOpacity: 0.6, strokeWeight: 4, map: map, zIndex: 1
+                path: pathCoords, geodesic: true,
+                strokeColor: '#616142', strokeOpacity: 0.6, strokeWeight: 4,
+                map, zIndex: 1
             });
-
             const colorLine = new window.google.maps.Polyline({
-                path: [], geodesic: true, strokeColor: routeColor,
-                strokeOpacity: 1.0, strokeWeight: 6, map: map, zIndex: 2
+                path: [], geodesic: true,
+                strokeColor: routeColor, strokeOpacity: 1.0, strokeWeight: 6,
+                map, zIndex: 2
             });
 
             greyLine.addListener('click', () => {
@@ -201,381 +188,320 @@ const MapManager = {
                 UI.updateInfoPanel(route);
             });
 
-            routePolylines[route.id] = { grey: greyLine, color: colorLine, fullPath: pathCoords, maxIndex: -1, routeData: route };
+            routePolylines[route.id] = {
+                grey, color: colorLine, fullPath: pathCoords, routeData: route
+            };
             pathCoords.forEach(p => bounds.extend(p));
         });
 
         map.fitBounds(bounds);
+    },
+
+    clearRoute(routeId, driverId) {
+        // Líneas base
+        if (routePolylines[routeId]) {
+            routePolylines[routeId].grey?.setMap(null);
+            routePolylines[routeId].color?.setMap(null);
+            delete routePolylines[routeId];
+        }
+        // Línea azul de progreso
+        if (actualPathPolylines[driverId]) {
+            actualPathPolylines[driverId].setMap(null);
+            delete actualPathPolylines[driverId];
+        }
+        // Marcador del vehículo
+        if (driverMarkers[driverId]) {
+            driverMarkers[driverId].setMap(null);
+            delete driverMarkers[driverId];
+        }
+        // Pines e InfoWindows estáticos
+        if (routeStaticMarkers[routeId]) {
+            routeStaticMarkers[routeId].forEach(item => {
+                item.setMap?.(null);
+                item.close?.();
+            });
+            delete routeStaticMarkers[routeId];
+        }
     }
 };
 
+// ─── Socket ───────────────────────────────────────────────────────────────────
 const SocketManager = {
     init() {
-        if (!window.io) return console.warn("Socket.io no cargado");
+        if (!window.io) {
+            console.warn('Socket.io no cargado');
+            return;
+        }
 
-        const SERVER_URL = API_URL.replace('/api', '');
+        const SERVER_URL = API_BASE_URL.replace('/api', '');
         socket = window.io(SERVER_URL);
 
-        // 🚨 ESCUCHAR SOLICITUD DE FINALIZACIÓN
-        // 🚨 ESCUCHAR SOLICITUD DE FINALIZACIÓN
         socket.on('finishRouteRequested', (data) => {
-            // 🛑 Si ya estamos procesando esta ruta, ignoramos el evento (Evita spam)
             if (pendingConfirmations.has(data.routeId)) return;
             pendingConfirmations.add(data.routeId);
 
-            console.log('🔔 Solicitud de finalización recibida:', data);
-
-            const nombreRuta = data.routeName || data.routeId;
+            const nombreRuta   = data.routeName  || data.routeId;
             const nombreChofer = data.driverName || 'el chofer';
 
-            const aprobada = confirm(`🚨 SOLICITUD DE FINALIZACIÓN 🚨\n\nEl chofer (${nombreChofer}) solicita finalizar la ruta:\n"${nombreRuta}"\n\n¿Deseas APROBAR y finalizar esta ruta ahora?`);
+            const aprobada = confirm(
+                `🚨 SOLICITUD DE FINALIZACIÓN 🚨\n\n` +
+                `El chofer (${nombreChofer}) solicita finalizar:\n"${nombreRuta}"\n\n` +
+                `¿Deseas APROBAR y finalizar esta ruta?`
+            );
 
             if (aprobada) {
-                const token = sessionStorage.getItem('numa_token');
-
-                fetch(`${API_URL}/routes/${data.routeId}/status`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ status: 'finalizada' })
-                })
-                    .then(async res => {
-                        if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
-                        return res.json();
-                    })
-                    .then(response => {
-                        console.log('✅ Ruta finalizada por el administrador', response);
-
-                        // 🧹 LÓGICA DE LIMPIEZA DEL MAPA 🧹
-                        const driverId = data.driverId;
-                        const routeId = data.routeId;
-
-                        // 1. Borrar líneas bases de MapManager
-                        if (routePolylines[routeId]) {
-                            if (routePolylines[routeId].grey) routePolylines[routeId].grey.setMap(null);
-                            if (routePolylines[routeId].color) routePolylines[routeId].color.setMap(null);
-                            delete routePolylines[routeId];
-                        }
-                        // 2. Borrar línea de progreso azul
-                        if (actualPathPolylines[driverId]) {
-                            actualPathPolylines[driverId].setMap(null);
-                            delete actualPathPolylines[driverId];
-                        }
-                        // 3. Borrar el carrito
-                        if (driverMarkers[driverId]) {
-                            driverMarkers[driverId].setMap(null);
-                            delete driverMarkers[driverId];
-                        }
-                        // 4. Borrar pines e InfoWindow estáticos
-                        if (routeStaticMarkers[routeId]) {
-                            routeStaticMarkers[routeId].forEach(item => {
-                                if (item.setMap) item.setMap(null);
-                                if (item.close) item.close(); // Para el InfoWindow
-                            });
-                            delete routeStaticMarkers[routeId];
-                        }
-
-                        alert('Ruta finalizada exitosamente. El mapa se ha limpiado.');
-                        pendingConfirmations.delete(data.routeId); // Liberar candado
+                finalizeRoute(data.routeId)
+                    .then(() => {
+                        MapManager.clearRoute(data.routeId, data.driverId);
+                        alert('Ruta finalizada exitosamente.');
                     })
                     .catch(err => {
                         console.error('❌ Error finalizando ruta:', err);
-                        alert('Hubo un error al intentar finalizar la ruta. Revisa la consola.');
-                        pendingConfirmations.delete(data.routeId); // Liberar candado
-                    });
+                        alert('Error al finalizar la ruta. Revisa la consola.');
+                    })
+                    .finally(() => pendingConfirmations.delete(data.routeId));
             } else {
-                // Si el admin cancela, liberamos el candado para futuras peticiones
                 pendingConfirmations.delete(data.routeId);
             }
         });
 
-
         socket.on('locationUpdate', (data) => {
-            if (!data || !data.lat || !data.lng) return;
+            if (!data?.lat || !data?.lng) return;
 
-            // 🛑 EL CADENERO: Si ya borramos la ruta de nuestros registros (routeStaticMarkers), 
-            // significa que la ruta ya terminó. ¡Ignoramos esta ubicación fantasma!
+            // Ignorar ubicaciones de rutas ya finalizadas
             if (data.routeId && !routeStaticMarkers[data.routeId]) {
-                console.warn(`Se ignoró ubicación del chofer ${data.driverId} porque su ruta ya finalizó.`);
+                console.warn(`Ubicación ignorada — ruta ${data.routeId} ya finalizó.`);
                 return;
             }
 
             const pos = { lat: parseFloat(data.lat), lng: parseFloat(data.lng) };
 
-            console.log(`📍 Coordenadas recibidas del chofer ${data.driverId}:`, pos);
+            if (!map) return;
 
-            // --- LÓGICA PARA DIBUJAR/ACTUALIZAR EL MARCADOR DEL CHOFER ---
-            if (map) { // Asegurarnos de que el mapa ya cargó
-                if (driverMarkers[data.driverId]) {
-                    // 1. El marcador ya existe: Solo animamos/actualizamos su posición (siempre)
-                    driverMarkers[data.driverId].setPosition(pos);
-                } else {
-                    // 2. El marcador no existe: Lo creamos por primera vez
-                    driverMarkers[data.driverId] = new window.google.maps.Marker({
-                        position: pos,
-                        map: map,
-                        title: `Vehículo en movimiento`,
-                        icon: {
-                            // --- NUEVO: Configuración de tu SVG personalizado ---
-                            url: '/assets/car.svg', // Ruta a tu archivo en la carpeta public
-                            scaledSize: new window.google.maps.Size(36, 36), // Ajusta el tamaño (ancho, alto)
-                            anchor: new window.google.maps.Point(18, 18) // El centro de rotación (la mitad del size)
-                        },
-                        zIndex: 999
-                    });
-                }
-
-                // 🔵 NUEVO: Dibujo de trazo en tiempo real con FILTRO ANTI-NUDOS
-                const lastLoc = lastKnownLocations[data.driverId];
-                let distance = 0;
-
-                if (lastLoc) {
-                    const lastLatLng = new window.google.maps.LatLng(lastLoc.lat, lastLoc.lng);
-                    const newLatLng = new window.google.maps.LatLng(pos.lat, pos.lng);
-                    // Calcula la distancia en metros entre el punto anterior y el nuevo
-                    distance = window.google.maps.geometry.spherical.computeDistanceBetween(lastLatLng, newLatLng);
-                }
-
-                // Solo agregamos el punto a la línea si es la primera vez (!lastLoc) 
-                // o si se movió MÁS de 15 metros.
-                if (!lastLoc || distance > 15) {
-                    // Buscamos si existe una línea azul para este chofer
-                    if (actualPathPolylines[data.driverId]) {
-                        // Obtenemos el arreglo de coordenadas de la línea
-                        const currentPath = actualPathPolylines[data.driverId].getPath();
-                        // Le inyectamos la nueva coordenada (Google Maps actualizará la UI al instante)
-                        currentPath.push(new window.google.maps.LatLng(pos.lat, pos.lng));
-                    }
-
-                    // Actualizamos la última ubicación conocida SOLO si pasó el filtro
-                    // Si rebotó 5 metros, lo ignoramos y seguimos comparando desde el último punto "bueno".
-                    lastKnownLocations[data.driverId] = { lat: pos.lat, lng: pos.lng, timestamp: Date.now() };
-                }
-            }
-
-            // Opcional: Actualizar el panel lateral si este es el chofer que estamos viendo
-            // Agregué validación de typeof para evitar errores si activeRouteId no está definido globalmente
-            if (typeof activeRouteId !== 'undefined' && activeRouteId && routePolylines[activeRouteId] && routePolylines[activeRouteId].routeData.driver === data.driverId) {
-                const coordsDisplay = document.getElementById('coords-display');
-                if (coordsDisplay) {
-                    coordsDisplay.textContent = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
-                }
-            }
-        });
-
-        socket.on('routeStatusChanged', App.updateAll);
-        socket.on('driversUpdated', App.updateAll);
-        socket.on('vehiclesUpdated', App.updateAll);
-    } // Asumo que esta llave cierra tu función SocketManager.init() o similar
-}; // Asumo que esta llave cierra el objeto
-const App = {
-    async updateAll() {
-        try {
-            drivers = await DashboardService.getDrivers();
-            routes = await DashboardService.getRoutes();
-            UI.updateKPIs(routes);
-            await MapManager.drawRoutes(routes);
-
-            // --- NUEVO: Suscribir el Dashboard a las salas de las rutas activas ---
-            if (socket) {
-                const activeRoutes = routes.filter(r => r.status === 'active' || r.estado === 'en curso');
-                activeRoutes.forEach(route => {
-                    const routeId = route.id || route._id; // Asegurar tomar el ID correcto
-                    if (routeId) {
-                        socket.emit('joinRoute', { routeId: String(routeId) });
-                        console.log(`📡 Dashboard suscrito a la sala de la ruta: ${routeId}`);
-                    }
+            // Actualizar o crear marcador del vehículo
+            if (driverMarkers[data.driverId]) {
+                driverMarkers[data.driverId].setPosition(pos);
+            } else {
+                driverMarkers[data.driverId] = new window.google.maps.Marker({
+                    position: pos,
+                    map,
+                    title: 'Vehículo en movimiento',
+                    icon: {
+                        url:        '/assets/car.svg',
+                        scaledSize: new window.google.maps.Size(36, 36),
+                        anchor:     new window.google.maps.Point(18, 18)
+                    },
+                    zIndex: 999
                 });
             }
 
+            // Trazo azul en tiempo real con filtro anti-nudos (>15m)
+            const lastLoc  = lastKnownLocations[data.driverId];
+            let   distance = 0;
+
+            if (lastLoc) {
+                distance = window.google.maps.geometry.spherical.computeDistanceBetween(
+                    new window.google.maps.LatLng(lastLoc.lat, lastLoc.lng),
+                    new window.google.maps.LatLng(pos.lat, pos.lng)
+                );
+            }
+
+            if (!lastLoc || distance > 15) {
+                actualPathPolylines[data.driverId]
+                    ?.getPath()
+                    .push(new window.google.maps.LatLng(pos.lat, pos.lng));
+
+                lastKnownLocations[data.driverId] = {
+                    lat: pos.lat, lng: pos.lng, timestamp: Date.now()
+                };
+            }
+
+            // Actualizar coordenadas en panel lateral
+            if (activeRouteId && routePolylines[activeRouteId]?.routeData.driver === data.driverId) {
+                const el = document.getElementById('coords-display');
+                if (el) el.textContent = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+            }
+        });
+
+        socket.on('routeStatusChanged', () => App.updateAll());
+        socket.on('driversUpdated',     () => App.updateAll());
+        socket.on('vehiclesUpdated',    () => App.updateAll());
+    }
+};
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+const App = {
+    async updateAll() {
+        try {
+            [drivers, routes] = await Promise.all([fetchDrivers(), fetchRoutes()]);
+
+            UI.updateKPIs(routes);
+            await MapManager.drawRoutes(routes);
+
+            // Suscribir a salas de rutas activas
+            if (socket) {
+                routes
+                    .filter(r => r.status === 'active' || r.estado === 'en curso')
+                    .forEach(route => {
+                        const routeId = String(route.id || route._id);
+                        socket.emit('joinRoute', { routeId });
+                        console.log(`📡 Suscrito a sala de ruta: ${routeId}`);
+                    });
+            }
         } catch (err) {
-            console.error("Error al actualizar datos:", err);
+            console.error('Error al actualizar datos:', err);
         }
     }
 };
 
-// 🛠️ Función de inicialización exportada para el Router
-// 🛠️ Función de inicialización exportada para el Router
+// ─── Inicialización ───────────────────────────────────────────────────────────
 export async function init() {
-    console.log("🗺️ Módulo Dashboard Iniciado");
+    console.log('🗺️ Módulo Dashboard iniciado');
 
-    // 1. Verificar login primero (antes del loader)
     if (typeof window.Auth !== 'undefined' && !window.Auth.isLoggedIn()) {
         window.location.href = '/login.html';
         return;
     }
 
-    // 2. 🟢 Encendemos la pantalla de carga
     showLoader();
 
     try {
-        // Configurar modales y botones de UI
-        const btnCloseModal = document.getElementById('btn-close-modal');
-        if (btnCloseModal) btnCloseModal.onclick = () => document.getElementById('modal-no-base').style.display = 'none';
+        // Modales de configuración
+        document.getElementById('btn-close-modal')?.addEventListener('click', () => {
+            document.getElementById('modal-no-base').style.display = 'none';
+        });
+        document.getElementById('btn-go-config')?.addEventListener('click', () => {
+            document.getElementById('modal-no-base').style.display = 'none';
+            window.location.href = '/settings';
+        });
 
-        const btnConfigureBase = document.getElementById('btn-go-config');
-        if (btnConfigureBase) {
-            btnConfigureBase.onclick = () => {
-                document.getElementById('modal-no-base').style.display = 'none'; // Oculta el modal antes de irse
-                window.location.href = '/settings'; // Te manda a la vista de settings
-            };
-        }
-
-        // Iniciar Mapa y Sockets
         await MapManager.init();
         SocketManager.init();
-        
-        // Carga inicial de datos y dibujado
         await App.updateAll();
         await drawActiveRoutesOnMap(map);
 
     } catch (error) {
-        console.error("🔥 Error iniciando el Dashboard:", error);
-        UI.showToast("Hubo un error al cargar el panel.", 5000);
+        console.error('🔥 Error iniciando Dashboard:', error);
+        UI.showToast('Hubo un error al cargar el panel.', 5000);
     } finally {
-        // 3. 🔴 Apagamos la pantalla de carga SIEMPRE (haya error o no)
         hideLoader();
     }
 }
+
+// ─── Dibujar rutas activas con trayecto guardado ──────────────────────────────
 export async function drawActiveRoutesOnMap(mapInstance) {
-    if (!window.google || !window.google.maps || !mapInstance) return;
+    if (!window.google?.maps || !mapInstance) return;
+
     try {
-        const routes = await DashboardService.getRoutes();
-        const activeRoutes = routes.filter(r => r.status === 'active');
+        const allRoutes   = await fetchRoutes();
+        const activeRoutes = allRoutes.filter(r => r.status === 'active');
 
         activeRoutes.forEach(route => {
-            if (!route.trayecto || !route.trayecto.encodedPolyline) return;
+            if (!route.trayecto?.encodedPolyline) return;
 
-            const routeId = route.id || route._id; // Asegurar el ID
-            const markersForThisRoute = []; // 👈 Aquí guardaremos los pines de ESTA ruta
+            const routeId          = route.id || route._id;
+            const markersForRoute  = [];
 
-            // A) Dibujar la ruta (en gris por defecto)
-            const decodedPath = window.google.maps.geometry.encoding.decodePath(route.trayecto.encodedPolyline);
-
+            // A) Polilínea de ruta planeada (gris)
+            const decodedPath = window.google.maps.geometry.encoding.decodePath(
+                route.trayecto.encodedPolyline
+            );
             const polyline = new window.google.maps.Polyline({
-                path: decodedPath,
-                geodesic: true,
-                strokeColor: '#808080',
-                strokeOpacity: 0.7,
-                strokeWeight: 4,
-                map: mapInstance,
-                zIndex: 1
+                path: decodedPath, geodesic: true,
+                strokeColor: '#808080', strokeOpacity: 0.7, strokeWeight: 4,
+                map: mapInstance, zIndex: 1
             });
-            // 👇 NUEVO: Guardamos la polyline gris para poder borrarla después
-            markersForThisRoute.push(polyline);
+            markersForRoute.push(polyline);
 
-            // 🔵 B) Dibujar el recorrido real (CAPA DINÁMICA AZUL)
-            const puntosReales = (route.recorridoReal || []).map(p => ({ lat: parseFloat(p.lat), lng: parseFloat(p.lng) }));
-
+            // B) Polilínea de recorrido real (azul)
+            const realPath = (route.recorridoReal || []).map(p => ({
+                lat: parseFloat(p.lat), lng: parseFloat(p.lng)
+            }));
             const actualPolyline = new window.google.maps.Polyline({
-                path: puntosReales,
-                geodesic: true,
-                strokeColor: '#007BFF',
-                strokeOpacity: 1.0,
-                strokeWeight: 5,
-                map: mapInstance,
-                zIndex: 2
+                path: realPath, geodesic: true,
+                strokeColor: '#007BFF', strokeOpacity: 1.0, strokeWeight: 5,
+                map: mapInstance, zIndex: 2
             });
 
-            const driverId = typeof route.driver === 'object' ? (route.driver._id || route.driver.id) : route.driver;
-            if (driverId) {
-                actualPathPolylines[driverId] = actualPolyline;
-            }
+            const driverId = typeof route.driver === 'object'
+                ? (route.driver._id || route.driver.id)
+                : route.driver;
+            if (driverId) actualPathPolylines[driverId] = actualPolyline;
 
-            // --- B) Marcadores de Inicio y Fin ---
-            const originLatLng = { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng };
-            const destLatLng = { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng };
+            // C) Marcadores de origen y destino
+            const markerConfig = (color, title) => ({
+                path:         window.google.maps.SymbolPath.CIRCLE,
+                scale:        6,
+                fillColor:    color,
+                fillOpacity:  1,
+                strokeWeight: 2,
+                strokeColor:  '#FFFFFF'
+            });
 
-            // Marcador de Inicio (Punto A)
-            const startMarker = new window.google.maps.Marker({ // 👈 Asignamos a variable
-                position: originLatLng,
+            const startMarker = new window.google.maps.Marker({
+                position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
                 map: mapInstance,
-                icon: {
-                    path: window.google.maps.SymbolPath.CIRCLE,
-                    scale: 6,
-                    fillColor: '#4CAF50',
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: '#FFFFFF'
-                },
+                icon:  markerConfig('#4CAF50'),
                 title: 'Inicio'
             });
-            markersForThisRoute.push(startMarker); // 👈 Y lo guardamos
-
-            // Marcador de Fin (Punto B)
-            const endMarker = new window.google.maps.Marker({ // 👈 Asignamos a variable
-                position: destLatLng,
+            const endMarker = new window.google.maps.Marker({
+                position: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng },
                 map: mapInstance,
-                icon: {
-                    path: window.google.maps.SymbolPath.CIRCLE,
-                    scale: 6,
-                    fillColor: '#F44336',
-                    fillOpacity: 1,
-                    strokeWeight: 2,
-                    strokeColor: '#FFFFFF'
-                },
+                icon:  markerConfig('#F44336'),
                 title: 'Destino'
             });
-            markersForThisRoute.push(endMarker); // 👈 Y lo guardamos
+            markersForRoute.push(startMarker, endMarker);
 
-            // --- C) Marcadores para Paradas (Waypoints) ---
-            if (route.trayecto.waypoints && route.trayecto.waypoints.length > 0) {
-                route.trayecto.waypoints.forEach((wp, index) => {
-                    const wpMarker = new window.google.maps.Marker({ // 👈 Asignamos a variable
-                        position: { lat: wp.lat, lng: wp.lng },
-                        map: mapInstance,
-                        icon: {
-                            path: window.google.maps.SymbolPath.CIRCLE,
-                            scale: 4,
-                            fillColor: '#FFC107',
-                            fillOpacity: 1,
-                            strokeWeight: 1,
-                            strokeColor: '#000000'
-                        },
-                        title: `Parada ${index + 1}`
-                    });
-                    markersForThisRoute.push(wpMarker); // 👈 Y lo guardamos
+            // D) Waypoints
+            (route.trayecto.waypoints || []).forEach((wp, i) => {
+                const wpMarker = new window.google.maps.Marker({
+                    position: { lat: wp.lat, lng: wp.lng },
+                    map: mapInstance,
+                    icon: {
+                        path:         window.google.maps.SymbolPath.CIRCLE,
+                        scale:        4,
+                        fillColor:    '#FFC107',
+                        fillOpacity:  1,
+                        strokeWeight: 1,
+                        strokeColor:  '#000000'
+                    },
+                    title: `Parada ${i + 1}`
                 });
-            }
+                markersForRoute.push(wpMarker);
+            });
 
-            // --- D) Etiqueta (InfoWindow) Discreta ---
-            const driverName = (route.driver && route.driver.nombre) ? route.driver.nombre : 'Sin chofer';
-            const routeColor = route.color || '#0056b3';
-
-            const infoWindow = new window.google.maps.InfoWindow({
+            // E) InfoWindow de etiqueta
+            const driverName  = route.driver?.nombre || 'Sin chofer';
+            const routeColor  = route.color || '#0056b3';
+            const infoWindow  = new window.google.maps.InfoWindow({
                 content: `
-                    <div class="route-tag" role="group" aria-label="Ruta ${route.name}, conductor ${driverName}" style="--dot-color: ${routeColor};">
-                        <span class="route-dot" aria-hidden="true"></span>
+                    <div class="route-tag" style="--dot-color:${routeColor};">
+                        <span class="route-dot"></span>
                         <span class="route-text">
                             <span class="route-name">${route.name}</span>
                             <span class="route-driver">(${driverName})</span>
                         </span>
-                    </div>
-                `,
-                position: originLatLng,
+                    </div>`,
+                position:       { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
                 disableAutoPan: true,
-                pixelOffset: new window.google.maps.Size(0, -10)
+                pixelOffset:    new window.google.maps.Size(0, -10)
             });
-
             infoWindow.open(mapInstance);
-            markersForThisRoute.push(infoWindow); // 👈 Y lo guardamos
+            markersForRoute.push(infoWindow);
 
-            // 👈 AL FINAL DEL FOREACH: Guardamos el arreglo completo usando el ID de la ruta
-            routeStaticMarkers[routeId] = markersForThisRoute;
+            routeStaticMarkers[routeId] = markersForRoute;
         });
 
     } catch (error) {
-        console.error("No se pudieron pintar las rutas activas:", error);
+        console.error('No se pudieron dibujar las rutas activas:', error);
     }
 }
 
-// Opcional: Función para limpiar sockets si cambias de página
+// ─── Cleanup al salir de la vista ─────────────────────────────────────────────
 export function cleanup() {
     if (socket) {
-        socket = null;
         socket.disconnect();
-        console.log("Socket desconectado al salir del Dashboard");
+        socket = null;
+        console.log('Socket desconectado al salir del Dashboard');
     }
 }
