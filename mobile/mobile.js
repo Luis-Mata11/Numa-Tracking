@@ -1,9 +1,9 @@
 // mobile.js
 require('dotenv').config();
 
-const express  = require('express');
-const path     = require('path');
-const http     = require('http');
+const express      = require('express');
+const path         = require('path');
+const http         = require('http');
 const { Server }   = require('socket.io');
 const { io: ClientIO } = require('socket.io-client');
 const fetch = global.fetch || require('node-fetch');
@@ -22,19 +22,21 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 const MAIN_SERVER = process.env.MAIN_SERVER_URL || 'http://localhost:4000';
 
-// ── Proxy: login del chofer ────────────────────────────────────────────────
+// ── Proxy: login del chofer ───────────────────────────────────────────────────
 app.post('/api/auth/driver/login', async (req, res) => {
     try {
+        console.log(`[mobile] proxying driver login → ${MAIN_SERVER}/api/auth/driver/login`);
         const r = await fetch(`${MAIN_SERVER}/api/auth/driver/login`, {
-            method: 'POST',
+            method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(req.body)
+            body:    JSON.stringify(req.body)
         });
         const body = await r.json().catch(() => ({}));
+        console.log(`[mobile] driver login response: ${r.status}`, body?.msg || body?.error || '');
         res.status(r.status).json(body);
     } catch (err) {
-        console.error('[mobile] error proxying driver/login', err);
-        res.status(500).json({ error: 'Error proxy login' });
+        console.error('[mobile] error proxying driver/login:', err.message);
+        res.status(500).json({ error: 'Error de conexión con el servidor principal.' });
     }
 });
 
@@ -47,66 +49,59 @@ app.post('/api/drivers/:id/login', async (req, res) => {
         const body = await r.json().catch(() => ({}));
         res.status(r.status).json(body);
     } catch (err) {
-        console.error('[mobile] proxy driver login', err);
+        console.error('[mobile] proxy driver login:', err.message);
         res.status(500).json({ error: 'Error proxy driver login' });
     }
 });
 
-// ── HTTP + Socket.IO para navegadores móviles ─────────────────────────────
+// ── HTTP + Socket.IO para navegadores móviles ─────────────────────────────────
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// ── Socket.IO CLIENT → MAIN SERVER ───────────────────────────────────────
+// ── Socket.IO CLIENT → MAIN SERVER ───────────────────────────────────────────
+// FIX: En Render los WebSockets entre servicios backend fallan.
+// Usamos polling primero y dejamos que socket.io escale a websocket si puede.
 const mainSocket = ClientIO(MAIN_SERVER, {
-    reconnection: true,
-    transports: ['websocket', 'polling']
+    reconnection:       true,
+    reconnectionDelay:  3000,
+    reconnectionAttempts: 10,
+    transports:         ['polling', 'websocket'], // polling primero ← clave
+    path:               '/socket.io'
 });
 
-mainSocket.on('connect',       () => console.log('[mobile→main] conectado:', mainSocket.id));
-mainSocket.on('connect_error', (e) => console.warn('[mobile→main] connect_error', e?.message));
+mainSocket.on('connect', () =>
+    console.log('[mobile→main] ✅ conectado:', mainSocket.id)
+);
+mainSocket.on('connect_error', (e) =>
+    console.warn('[mobile→main] connect_error:', e?.message)
+);
+mainSocket.on('disconnect', (reason) =>
+    console.warn('[mobile→main] desconectado:', reason)
+);
 
-// ── Reenvíos MAIN → móviles ───────────────────────────────────────────────
-mainSocket.on('routeStatusChanged', (payload) => {
-    try {
-        const routeId = payload?.id || payload?._id || payload?.route?._id;
-        routeId
-            ? io.to(String(routeId)).emit('routeStatusChanged', payload)
-            : io.emit('routeStatusChanged', payload);
-    } catch (e) { console.error('[mobile] rebroadcast routeStatusChanged', e); }
-});
+// ── Reenvíos MAIN → móviles ───────────────────────────────────────────────────
+const rebroadcast = (event, getRouteId) => {
+    mainSocket.on(event, (payload) => {
+        try {
+            const routeId = getRouteId(payload);
+            routeId
+                ? io.to(String(routeId)).emit(event, payload)
+                : io.emit(event, payload);
+        } catch (e) {
+            console.error(`[mobile] rebroadcast ${event}:`, e.message);
+        }
+    });
+};
 
-mainSocket.on('routeStarted', (payload) => {
-    try {
-        const routeId = payload?.routeId;
-        routeId
-            ? io.to(String(routeId)).emit('routeStarted', payload)
-            : io.emit('routeStarted', payload);
-    } catch (e) { console.error('[mobile] rebroadcast routeStarted', e); }
-});
+rebroadcast('routeStatusChanged', (p) => p?.id || p?._id || p?.route?._id);
+rebroadcast('routeStarted',       (p) => p?.routeId);
+rebroadcast('routeFinalized',     (p) => p?.routeId);
+rebroadcast('locationUpdate',     (p) => p?.routeId);
 
-mainSocket.on('routeFinalized', (payload) => {
-    try {
-        const routeId = payload?.routeId;
-        routeId
-            ? io.to(String(routeId)).emit('routeFinalized', payload)
-            : io.emit('routeFinalized', payload);
-    } catch (e) { console.error('[mobile] rebroadcast routeFinalized', e); }
-});
-
-mainSocket.on('locationUpdate', (payload) => {
-    try {
-        const routeId = payload?.routeId;
-        routeId
-            ? io.to(String(routeId)).emit('locationUpdate', payload)
-            : io.emit('locationUpdate', payload);
-    } catch (e) { console.error('[mobile] rebroadcast locationUpdate', e); }
-});
-
-// ── Conexiones de navegadores móviles ────────────────────────────────────
+// ── Conexiones de navegadores móviles ─────────────────────────────────────────
 io.on('connection', (socket) => {
-    console.log('[mobile.io] navegador móvil conectado', socket.id);
+    console.log('[mobile.io] navegador móvil conectado:', socket.id);
 
-    // Chofer se une a la sala de su ruta
     socket.on('joinRoute', ({ routeId, driverId }) => {
         if (!routeId) return;
         socket.join(String(routeId));
@@ -114,16 +109,11 @@ io.on('connection', (socket) => {
         socket.driverId = driverId || null;
         console.log(`[mobile.io] ${socket.id} → ruta ${routeId} (driver:${driverId})`);
 
-        // Avisar al servidor principal que el chofer está conectado
-        mainSocket.emit('mobileConnected', { routeId, driverId, socketId: socket.id });
-        // 🗑️ ELIMINADO: fetch a /api/bitacoraRuta aquí (el endpoint no existe y
-        //    socketService.js ya registra este evento en BitacoraRuta automáticamente)
+        if (mainSocket?.connected) {
+            mainSocket.emit('mobileConnected', { routeId, driverId, socketId: socket.id });
+        }
     });
 
-    // GPS del chofer → reenviar al servidor principal
-    // 🔑 CAMBIO CLAVE: Ya NO llamamos fetch('/api/bitacoraRuta') en cada ping.
-    //    socketService.js es el único responsable de persistir las posiciones
-    //    en RecorridoReal con $push.
     socket.on('driverLocation', (data) => {
         try {
             if (!data) return;
@@ -147,33 +137,31 @@ io.on('connection', (socket) => {
 
             socket.emit('locationAck', { ok: true, ts: Date.now() });
         } catch (e) {
-            console.error('[mobile] driverLocation', e);
+            console.error('[mobile] driverLocation:', e.message);
         }
     });
 
-    // Solicitud de finalización: reenviar al admin en MAIN SERVER
     socket.on('requestFinishRoute', (data) => {
         try {
-            console.log(`[mobile.io] requestFinishRoute de ${socket.id} → reenviando a MAIN`);
+            console.log(`[mobile.io] requestFinishRoute → reenviando a MAIN`);
             if (mainSocket?.connected) {
                 mainSocket.emit('requestFinishRoute', data);
             } else {
                 console.warn('[mobile] mainSocket desconectado — solicitud no enviada');
             }
-            // 🗑️ ELIMINADO: fetch a /api/bitacoraRuta (mismo motivo que arriba)
         } catch (e) {
-            console.error('[mobile] requestFinishRoute', e);
+            console.error('[mobile] requestFinishRoute:', e.message);
         }
     });
 
     socket.on('disconnect', () => {
-        console.log('[mobile.io] desconectado', socket.id);
+        console.log('[mobile.io] desconectado:', socket.id);
     });
 });
 
-// ── Arrancar servidor ─────────────────────────────────────────────────────
+// ── Arrancar servidor ──────────────────────────────────────────────────────────
 const PORT = process.env.MOBILE_PORT || 8000;
 server.listen(PORT, () => {
-    console.log(`[mobile] escuchando en http://localhost:${PORT} (sirve ${PUBLIC_DIR})`);
-    console.log(`[mobile] proxying a MAIN_SERVER=${MAIN_SERVER}`);
+    console.log(`[mobile] escuchando en http://localhost:${PORT}`);
+    console.log(`[mobile] MAIN_SERVER = ${MAIN_SERVER}`);
 });
