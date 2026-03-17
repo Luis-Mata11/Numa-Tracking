@@ -156,30 +156,28 @@ const licencia = await License.findOne({ cliente: user._id }); // <--- Debe deci
 exports.driverLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
+        console.log('🔍 LOGIN body:', { email, password });
 
-        if (!email || !password) {
-            return res.status(400).json({ msg: 'Ingresa el correo del chofer y la contraseña de la ruta.' });
-        }
-
-        // 1. Buscar Chofer por email
         const driver = await Driver.findOne({ email });
-        if (!driver) {
-            return res.status(404).json({ msg: 'No existe un chofer registrado con este correo.' });
-        }
-        console.log(`El ID de este chofer es: ${driver._id}`);
+        console.log('🔍 Driver:', driver ? `${driver._id} | tenantId: ${driver.tenantId}` : 'NO ENCONTRADO');
 
-        // 2. Buscar la Ruta asignada a este chofer con la contraseña proporcionada
-        // 👇 AQUÍ AGREGAMOS LOS POPULATE PARA TRAER LAS COORDENADAS 👇
+        if (!driver) return res.status(404).json({ msg: 'No existe un chofer registrado con este correo.' });
+
+        // Sin filtro de status para ver si la ruta existe
+        const routeAny = await Route.findOne({ accessCode: password, driver: driver._id });
+        console.log('🔍 Ruta (sin status filter):', routeAny ? `${routeAny._id} | status: "${routeAny.status}"` : 'NO ENCONTRADA');
+
         const route = await Route.findOne({
             accessCode: password,
             driver: driver._id,
             status: { $in: ['pending', 'active', 'pendiente', 'en curso', 'creada'] }
         })
-            .populate('vehicle')
-            .populate('driver')
-            .populate('trayecto'); // <--- ¡ESTO ES VITAL PARA EL MAPA!
+        .populate('vehicle')
+        .populate('driver')
+        .populate('trayecto');
 
-        // (Eliminé el if (!route) duplicado que tenías)
+        console.log('🔍 Ruta (con status filter):', route ? route._id : 'NO ENCONTRADA');
+
         if (!route) {
             return res.status(401).json({ msg: 'Contraseña incorrecta, la ruta ya finalizó o no te pertenece.' });
         }

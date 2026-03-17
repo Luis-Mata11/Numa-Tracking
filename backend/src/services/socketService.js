@@ -215,7 +215,7 @@ module.exports = (io) => {
                             routeName,
                             driverName,
                             timestamp:  Date.now(),
-                            message:    '📋 Solicitud de finalización pendiente de aprobación'
+                            message:    'Solicitud de finalización pendiente de aprobación'
                         });
                     } catch (e) {
                         console.error('[io] requestFinishRoute lookup:', e);
@@ -243,7 +243,7 @@ module.exports = (io) => {
 
                     if (updated) {
                         const normalized = normalizeRouteStatus(updated);
-                        io.emit('routeFinalized',    { routeId, message: '✅ Ruta finalizada', route: normalized });
+                        io.emit('routeFinalized',    { routeId, message: 'Ruta finalizada', route: normalized });
                         io.emit('routeStatusChanged', { action: 'status', route: normalized });
 
                         // Cerrar RecorridoReal activo y calcular distancia total
@@ -260,10 +260,10 @@ module.exports = (io) => {
                                 description: 'Administrador aprobó la finalización de la ruta',
                                 timestamp:   new Date()
                             }).catch(e => console.error('[io] bitácora finalizacion_aprobada:', e));
-                        }
+                        }S
                     }
                 } else {
-                    io.emit('finishRouteRejected', { routeId, message: '❌ Solicitud rechazada' });
+                    io.emit('finishRouteRejected', { routeId, message: 'Solicitud rechazada' });
                     await BitacoraRuta.create({
                         routeId,
                         action:      'stop',

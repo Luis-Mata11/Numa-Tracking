@@ -135,7 +135,7 @@ function _buildModal(licenseKey = '—') {
     // Plan Pro → WhatsApp
     overlay.querySelectorAll('.select-plan').forEach(btn => {
         btn.addEventListener('click', () => {
-            const msg = encodeURIComponent('Hola, me interesa activar el Plan Pro de NUMA Tracking.');
+            const msg = encodeURIComponent('Hola, me interesa activar el Plan Pro de NUMA Tracking. Mi licencia es: ' + licenseKey);
             window.open(`https://wa.me/523326378746?text=${msg}`, '_blank');
         });
     });
