@@ -3,49 +3,41 @@ import { defineConfig } from 'vite';
 import { resolve } from 'path';
 
 export default defineConfig({
-  root: '.',
-  build: {
-    // 👇 CAMBIO 1: Dejamos 'dist' adentro de la carpeta frontend
-    outDir: 'dist',
-    rollupOptions: {
-      input: {
-        // Asumiendo que estos dos SÍ están en la raíz del frontend:
-        main: resolve(__dirname, 'index.html'),
-        login: resolve(__dirname, 'login.html'),
-
-        // 👇 Le agregamos 'views/' a los que están dentro de la carpeta
-        signup: resolve(__dirname, 'signUp.html'), // <-- ¡Asegúrate de que esta línea exista!
-        routes: resolve(__dirname, 'src/views/routes.html'),
-        choferes: resolve(__dirname, 'src/views/drivers.html'),
-        vehiculos: resolve(__dirname, 'src/views/vehicles.html'),
-        reportes: resolve(__dirname, 'src/views/reports.html'),
-        configuraciones: resolve(__dirname, 'src/views/settings.html'),
-      },
+    root: '.',
+    build: {
+        outDir: 'dist',
+        rollupOptions: {
+            input: {
+                // ─── Solo las páginas reales con su propio HTML ───────────────
+                // Las vistas del router (routes.html, drivers.html, etc.) NO van
+                // aquí — se importan como texto plano con ?raw desde router.js
+                main:   resolve(__dirname, 'index.html'),
+                login:  resolve(__dirname, 'login.html'),
+                signup: resolve(__dirname, 'signUp.html'),
+            }
+        }
     },
-  },
 
-  resolve: {
-    alias: {
-      '/js': resolve(__dirname, 'src/js'),
+    resolve: {
+        alias: {
+            '/js': resolve(__dirname, 'src/js'),
+        }
     },
-  },
 
-  server: {
-    port: 5173,
-    open: true,
-    // 👇 Esto seguirá funcionando perfecto para tu DESARROLLO LOCAL
-    // Pero en PRODUCCIÓN, Render ignorará esto por completo.
-    proxy: {
-      '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
-        secure: false,
-      },
-      '/socket.io': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
-        ws: true,
-      }
+    server: {
+        port: 5173,
+        open: true,
+        proxy: {
+            '/api': {
+                target: 'http://localhost:4000',
+                changeOrigin: true,
+                secure: false,
+            },
+            '/socket.io': {
+                target: 'http://localhost:4000',
+                changeOrigin: true,
+                ws: true,
+            }
+        }
     }
-  }
 });
