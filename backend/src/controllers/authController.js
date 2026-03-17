@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
         const fechaFin = new Date();
         fechaFin.setDate(fechaInicio.getDate() + 15); // 15 días de Trial
 
-       // --- PASO 3: CREAR LICENCIA ---
+        // --- PASO 3: CREAR LICENCIA ---
         console.log("3. Intentando crear licencia con tenantId:", licenciaKey); // DEBUG
 
         try {
@@ -63,7 +63,7 @@ exports.register = async (req, res) => {
 
             // 3. Guardamos en la base de datos
             await nuevaLicencia.save();
-            
+
             console.log("4. Licencia guardada exitosamente:", nuevaLicencia._id); // DEBUG
 
             res.status(201).json({
@@ -80,7 +80,7 @@ exports.register = async (req, res) => {
 
             return res.status(500).json({ error: 'Error al generar la licencia. Intente de nuevo.' });
         }
-        
+
     } catch (error) {
         console.error('Error general en registro:', error);
         res.status(500).json({ error: 'Error interno en el servidor' });
@@ -100,7 +100,7 @@ exports.login = async (req, res) => {
 
         // 2. BUSCAR SU LICENCIA
         // 2. BUSCAR SU LICENCIA
-const licencia = await License.findOne({ cliente: user._id }); // <--- Debe decir 'cliente'
+        const licencia = await License.findOne({ cliente: user._id }); // <--- Debe decir 'cliente'
 
         if (!licencia) {
             return res.status(403).json({ error: 'Usuario sin licencia asignada. Contacte soporte.' });
@@ -156,31 +156,42 @@ const licencia = await License.findOne({ cliente: user._id }); // <--- Debe deci
 exports.driverLogin = async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('🔍 LOGIN body:', { email, password });
 
-        const driver = await Driver.findOne({ email });
-        console.log('🔍 Driver:', driver ? `${driver._id} | tenantId: ${driver.tenantId}` : 'NO ENCONTRADO');
-
-        if (!driver) return res.status(404).json({ msg: 'No existe un chofer registrado con este correo.' });
-
-        // Sin filtro de status para ver si la ruta existe
-        const routeAny = await Route.findOne({ accessCode: password, driver: driver._id });
-        console.log('🔍 Ruta (sin status filter):', routeAny ? `${routeAny._id} | status: "${routeAny.status}"` : 'NO ENCONTRADA');
-
-        const route = await Route.findOne({
-            accessCode: password,
-            driver: driver._id,
-            status: { $in: ['pending', 'active', 'pendiente', 'en curso', 'creada'] }
-        })
-        .populate('vehicle')
-        .populate('driver')
-        .populate('trayecto');
-
-        console.log('🔍 Ruta (con status filter):', route ? route._id : 'NO ENCONTRADA');
-
-        if (!route) {
-            return res.status(401).json({ msg: 'Contraseña incorrecta, la ruta ya finalizó o no te pertenece.' });
+        if (!email || !password) {
+            return res.status(400).json({ msg: 'Ingresa el correo y el código de acceso.' });
         }
+
+        // 1. Buscar la ruta por accessCode primero
+        const routeByCode = await Route.findOne({
+            accessCode: password,
+            status: { $in: ['pending', 'active', 'pendiente', 'en curso', 'creada'] }
+        });
+
+        if (!routeByCode) {
+            return res.status(401).json({ msg: 'Código de acceso inválido o la ruta ya finalizó.' });
+        }
+
+        // 2. Ahora buscar el chofer filtrando por email Y tenantId de la ruta
+        const driver = await Driver.findOne({
+            email,
+            tenantId: routeByCode.tenantId  // ← aislamiento de tenant garantizado
+        });
+
+        if (!driver) {
+            return res.status(404).json({ msg: 'No existe un chofer con este correo en esta empresa.' });
+        }
+
+        // 3. Verificar que la ruta pertenezca a este chofer
+        if (String(routeByCode.driver) !== String(driver._id)) {
+            return res.status(401).json({ msg: 'Esta ruta no te pertenece.' });
+        }
+
+        // 4. Fetch completo con populate
+        const route = await Route.findById(routeByCode._id)
+            .populate('vehicle')
+            .populate('driver')
+            .populate('trayecto');
+
 
         // 3. El chofer está en la sala de espera de esta ruta
         await Route.updateMany(
