@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (wantsToLogout) {
                 try {
                     // 5. Envía la petición POST a tu API
-                    const response = await fetch('/api/admin/logout', {
+                    const response = await fetch(`${API_URL}/admin/logout`, {
                         method: 'POST'
                     });
 

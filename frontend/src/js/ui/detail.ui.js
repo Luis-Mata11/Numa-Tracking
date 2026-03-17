@@ -184,7 +184,7 @@ export function showRouteDetailUI(route) {
                 btn.disabled = true;
 
                 const token = sessionStorage.getItem('numa_token');
-                const response = await fetch(`/api/routes/${r._id}/start`, {
+                const response = await fetch(`${API_URL}/routes/${r._id}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
                 });
@@ -219,7 +219,7 @@ export function showRouteDetailUI(route) {
 
                     const token = sessionStorage.getItem('numa_token');
                     // Usamos el endpoint de finalizar, pero le pasamos un flag de status cancelado
-                    const response = await fetch(`/api/routes/${r._id || r.id}/status`, { // <-- Cambiamos /finish por /status
+                    const response = await fetch(`${API_URL}/routes/${r._id || r.id}/status`, { // <-- Cambiamos /finish por /status
                         method: 'PATCH',                                                   // <-- Cambiamos POST por PATCH
                         headers: {
                             'Content-Type': 'application/json',
