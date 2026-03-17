@@ -41,11 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await api.login(email, password);
 
                 showMsg('¡Bienvenido!', 'success');
-                
+
                 // Guardar TenantId si existe
                 if (data.user?.tenantId) {
                     localStorage.setItem('numa_licencia', data.user.tenantId);
                 }
+
+                // 👇 ¡AQUÍ ESTÁ LA LÍNEA MÁGICA QUE FALTA! 👇
+                sessionStorage.setItem('numa_token', data.token);
 
                 setTimeout(() => window.location.href = 'index.html', 1000);
 
