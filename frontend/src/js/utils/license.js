@@ -97,10 +97,10 @@ function _buildModal(licenseKey = '—') {
                             <li>Soporte 24/7</li>
                         </ul>
                     </div>
-                    <button class="btn-plan select-plan featured-btn">Elegir Plan Pro</button>
+                    <button class="btn-plan select-plan featured-btn"><i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp</button>
                 </div>
 
-                <div class="plan-card">
+                <div class="plan-card disabled">
                     <div class="plan-info">
                         <span class="badge" style="background:#64748b;">Próximamente</span>
                         <h3>Corporativo</h3>
@@ -112,9 +112,7 @@ function _buildModal(licenseKey = '—') {
                             <li>Gestión de flotas</li>
                         </ul>
                     </div>
-                    <button class="btn-plan select-plan cotizar-btn">
-                        <i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp
-                    </button>
+                    <button class="btn-plan" disabled>No disponible</button>
                 </div>
 
             </div>
@@ -134,17 +132,11 @@ function _buildModal(licenseKey = '—') {
         window.location.href = '/login.html';
     });
 
-    // Eventos de planes
+    // Plan Pro → WhatsApp
     overlay.querySelectorAll('.select-plan').forEach(btn => {
         btn.addEventListener('click', () => {
-            const planName = btn.closest('.plan-card').querySelector('h3').innerText;
-            const isCotizar = btn.classList.contains('cotizar-btn');
-            if (isCotizar) {
-                const msg = encodeURIComponent('Hola, me interesa cotizar el plan Corporativo de NUMA Tracking.');
-                window.open(`https://wa.me/523326378746?text=${msg}`, '_blank');
-            } else {
-                _handlePlanSelection(planName, btn);
-            }
+            const msg = encodeURIComponent('Hola, me interesa activar el Plan Pro de NUMA Tracking.');
+            window.open(`https://wa.me/523326378746?text=${msg}`, '_blank');
         });
     });
 }
