@@ -67,12 +67,23 @@ export async function saveRoute(routeData, editingId = null) {
     return res.json();
 }
 
+// ✅ PONER
 export async function updateRouteStatus(id, action) {
-    const res = await authFetch(`/routes/${id}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ action })
+    // POST  /:id/start  → iniciar ruta
+    // PATCH /:id/status → cancelar, finalizar, etc.
+    const isStart  = action === 'start';
+    const method   = isStart ? 'POST'  : 'PATCH';
+    const endpoint = isStart ? `/routes/${id}/start` : `/routes/${id}/status`;
+    const body     = isStart ? {} : { status: action };
+
+    const res = await authFetch(endpoint, {
+        method,
+        body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error('Error cambiando estado');
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || 'Error cambiando estado de la ruta');
+    }
     return res.json();
 }
 
