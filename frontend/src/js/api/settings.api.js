@@ -29,14 +29,14 @@ async function authFetch(endpoint, options = {}) {
 // ==========================================
 
 export async function fetchBases() {
-    const res = await authFetch('/api/bases');
+    const res = await authFetch('/bases');
     if (!res.ok) throw new Error('Error cargando bases');
     return res.json(); // { bases: [], defaultBaseId: '' }
 }
 
 export async function saveBase(payload, editingId = null) {
     const method   = editingId ? 'PUT' : 'POST';
-    const endpoint = editingId ? `/api/bases/${editingId}` : '/api/bases';
+    const endpoint = editingId ? `/bases/${editingId}` : '/bases';
 
     const res = await authFetch(endpoint, {
         method,
@@ -51,18 +51,18 @@ export async function saveBase(payload, editingId = null) {
 }
 
 export async function deleteBase(id) {
-    const res = await authFetch(`/api/bases/${id}`, { method: 'DELETE' });
+    const res = await authFetch(`/bases/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Error al eliminar la base');
     return res.json();
 }
 
 export async function setDefaultBase(id) {
-    const res = await authFetch(`/api/bases/${id}/default`, { method: 'PUT' });
+    const res = await authFetch(`/bases/${id}/default`, { method: 'PUT' });
     if (!res.ok) throw new Error('Error al establecer base principal');
     return res.json();
 }
 
 export async function logout() {
-    await authFetch('/api/admin/logout', { method: 'POST' });
+    await authFetch('/admin/logout', { method: 'POST' });
     window.location.href = 'login.html';
 }
