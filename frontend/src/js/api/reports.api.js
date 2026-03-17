@@ -65,5 +65,5 @@ export function buildProxyMapUrl({ encodedPolyline, realPositions = [], w = 700,
         params.set('path', points);
     }
 
-    return `${API_BASE_URL}/api/map-image?${params.toString()}`;
+    return `${API_BASE_URL}/map-image?${params.toString()}`;
 }
