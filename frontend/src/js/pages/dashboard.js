@@ -17,7 +17,7 @@ let actualPathPolylines = {}; // 👈 NUEVA VARIABLE: Guardará las líneas azul
 let routeStaticMarkers = {}; // 👈 NUEVA: Guardará marcadores de inicio/fin/paradas/infoWindows
 let pendingConfirmations = new Set(); //
 
-const API_URL = 'http://localhost:4000/api'; // Ajusta si tu ruta difiere
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 const DashboardService = {
     getHeaders() {
