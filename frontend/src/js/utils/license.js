@@ -68,6 +68,9 @@ function _buildModal(licenseKey = '—') {
                     <i class="fa-solid fa-key" style="margin-right:6px;color:var(--muted);"></i>
                     ${licenseKey}
                 </div>
+                <button id="license-logout-btn" class="license-logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+                </button>
             </div>
 
             <div class="plans-container">
@@ -97,7 +100,7 @@ function _buildModal(licenseKey = '—') {
                     <button class="btn-plan select-plan featured-btn">Elegir Plan Pro</button>
                 </div>
 
-                <div class="plan-card disabled">
+                <div class="plan-card">
                     <div class="plan-info">
                         <span class="badge" style="background:#64748b;">Próximamente</span>
                         <h3>Corporativo</h3>
@@ -109,7 +112,9 @@ function _buildModal(licenseKey = '—') {
                             <li>Gestión de flotas</li>
                         </ul>
                     </div>
-                    <button class="btn-plan" disabled>No disponible</button>
+                    <button class="btn-plan select-plan cotizar-btn">
+                        <i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp
+                    </button>
                 </div>
 
             </div>
@@ -123,11 +128,23 @@ function _buildModal(licenseKey = '—') {
 
     document.body.appendChild(overlay);
 
+    // Logout
+    document.getElementById('license-logout-btn')?.addEventListener('click', () => {
+        sessionStorage.clear();
+        window.location.href = '/login.html';
+    });
+
     // Eventos de planes
     overlay.querySelectorAll('.select-plan').forEach(btn => {
         btn.addEventListener('click', () => {
             const planName = btn.closest('.plan-card').querySelector('h3').innerText;
-            _handlePlanSelection(planName, btn);
+            const isCotizar = btn.classList.contains('cotizar-btn');
+            if (isCotizar) {
+                const msg = encodeURIComponent('Hola, me interesa cotizar el plan Corporativo de NUMA Tracking.');
+                window.open(`https://wa.me/523326378746?text=${msg}`, '_blank');
+            } else {
+                _handlePlanSelection(planName, btn);
+            }
         });
     });
 }

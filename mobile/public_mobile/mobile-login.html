@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>NUMA CHOFERES</title>
+
+
+  <link rel="stylesheet" href="./css/mobile-login.css">
+
+  <style>
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: -6px;
+    }
+
+    /* Layout interno del card para centrar el botón de submit */
+    .card-footer {
+      display: flex;
+      justify-content: center;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wrap">
+    <header class="brand center" aria-hidden="false">
+      <div class="logo">
+        <img src="/img/logo.png" alt="">
+      </div>
+      <div>
+        <h1>NUMA Movil</h1>
+        <p class="muted">Acceso chofer — Inicia tu ruta</p>
+      </div>
+    </header>
+
+    <main class="card" role="main" aria-labelledby="login-title">
+      <div>
+        <h2 id="login-title" style="margin:0 0 6px 0">Ingresar a la ruta</h2>
+        <div class="hint">Introduce tu correo y la contraseña única de la ruta</div>
+      </div>
+
+      <form id="login-form" autocomplete="on" novalidate>
+        <div class="field">
+          <label for="email">Correo electrónico</label>
+          <input id="email" name="email" type="email" placeholder="tu@empresa.com" required aria-required="true" />
+        </div>
+
+        <div class="field">
+          <label for="route-pass">Código de acceso de la ruta</label>
+          <div class="pw-wrap">
+            <input id="route-pass" name="password" type="password" placeholder="Ej: 123456" required
+              aria-required="true" />
+            <button type="button" id="toggle-pw" class="icon-btn" title="Mostrar / ocultar contraseña"
+              aria-pressed="false" aria-label="Mostrar contraseña">
+              <!-- icono simple (ojo) -->
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" stroke="currentColor" stroke-width="1.2"
+                  stroke-linecap="round" stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="row-between" style="align-items:center; margin-top:6px">
+          <a class="small muted" href="#"
+            onclick="alert('Contacta al administrador para recuperar la contraseña de ruta.');return false;">¿Olvidaste la
+            contraseña?</a>
+        </div>
+
+        <div class="error" id="error-msg" role="alert" aria-live="assertive"></div>
+
+        <div class="card-footer">
+          <button id="btn-login" class="btn-primary" type="submit">
+            Entrar
+          </button>
+        </div>
+      </form>
+
+      <div class="sep"><span>o</span></div>
+
+      <div class="center small muted">
+        Al entrar aceptas las políticas de rastreo de ubicación.
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast (usa tu clase .toast) -->
+  <div id="toast" class="toast" role="status" aria-live="polite">Conectando…</div>
+  <script src="./js/login-mobile.js"></script>
+</body>
+
+</html>

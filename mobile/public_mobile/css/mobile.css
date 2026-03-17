@@ -1,0 +1,410 @@
+:root {
+  --bg: #f5f7fb;
+  --bg-1: #f5f7fb;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --text: #0f1724;
+  --sidebar-bg: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  --accent: #6c8cff;
+  --accent-2: #f357a1;
+  --glass: rgba(255, 255, 255, 0.06);
+  --shadow: 0 10px 30px rgba(12, 20, 33, 0.08);
+  --radius-lg: 14px;
+  --radius-sm: 10px;
+  --gap: 14px;
+  font-synthesis: none;
+}
+
+/* Reset básico */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  color: var(--text);
+  background: var(--bg-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mapa full screen (detrás) */
+#map {
+  position: fixed;
+  inset: 0;
+  height: 100vh;
+  width: 100vw;
+  z-index: 0;
+  background: #e6eefc;
+}
+
+/* Topbar — estilo inspirado en routes header */
+.topbar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.86));
+  box-shadow: 0 8px 22px rgba(12, 20, 33, 0.08);
+  z-index: 40;
+  border: 1px solid rgba(15, 23, 36, 0.06);
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -0.2px;
+  padding-left:10px ;
+}
+
+.topbar img{
+  width: 32px;
+  height: 32px;
+}
+
+.topbar .title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.topbar .title strong {
+  font-size: 15px;
+  color: var(--text);
+}
+
+.topbar .title .muted {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+
+.logo-container {
+  display: flex;
+  line-height: 1;
+  align-items: center;
+  background-color: #0b1228;
+  padding: 10px;
+  color: #fff;
+  border-radius: 10px;
+}
+
+.logo-container p {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: -0.2px;
+  padding-left:10px ;
+}
+
+/* Icon buttons coherentes con routes.css */
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.75));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  box-shadow: 0 6px 14px rgba(12, 20, 33, 0.06);
+  cursor: pointer;
+}
+
+/* Bottom sheet (sheet) — tarjeta elevada similar a cards de routes */
+.sheet {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: linear-gradient(180deg, var(--surface), rgba(255, 255, 255, 0.98));
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  z-index: 50;
+  box-shadow: var(--shadow);
+  border: 1px solid rgba(15, 23, 36, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  backdrop-filter: blur(6px);
+}
+
+/* grip para arrastrar (visual) */
+.grab {
+  width: 64px;
+  height: 6px;
+  background: rgba(15, 23, 36, 0.04);
+  border-radius: 999px;
+  margin: 0 auto 8px;
+  display: block;
+}
+
+/* Layout sheet en dos columnas responsivas */
+.sheet-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.sheet-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.sheet-right {
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+/* Tipografías internas coherentes */
+.label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.micro {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* Estado: usa variantes como en routes.css */
+.status {
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 13px;
+  min-width: 96px;
+  text-align: center;
+  box-shadow: 0 6px 14px rgba(180deg, #0b1228 0%, #0f1b36 100%);
+}
+
+.status.bad {
+  background: rgba(243, 87, 161, 0.08);
+  color: (180deg, #0b1228 0%, #0f1b36 100%);
+}
+
+.status.ok {
+  background: rgba(108, 140, 255, 0.08);
+  color: #3160ff;
+}
+
+.status.done {
+  background: rgba(34, 197, 94, 0.08);
+  color: #16a34a;
+}
+
+.status.pending {
+  background: rgba(250, 204, 21, 0.08);
+  color: #b45309;
+}
+
+/* Botones principales — acorde al diseño de routes */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 0;
+  font-weight: 800;
+  background: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(108, 140, 255, 0.12);
+  transition: transform .12s ease;
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Botones ghost coherentes con inputs de routes */
+.btn-ghost {
+  background: transparent;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 36, 0.06);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Pie del sheet */
+.sheet-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.foot-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Floating action button similar a call-to-action */
+.fab {
+  position: fixed;
+  right: 18px;
+  bottom: 240px;
+  background: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  color: #fff;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 32px rgba(108, 140, 255, 0.14);
+  z-index: 60;
+  border: 0;
+  cursor: pointer;
+}
+
+/* Toast — apariencia discreta tipo routes */
+.toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 120px;
+  background: var(--surface);
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 36, 0.04);
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+  color: var(--muted);
+  box-shadow: 0 8px 22px rgba(12, 20, 33, 0.06);
+}
+
+.toast.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Accesibilidad: enfoque visible similar al routes.css */
+:focus {
+  outline: 3px solid rgba(108, 140, 255, 0.14);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+
+.btn-finish {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  color: white;
+  background-color: #2ecc71;
+  /* Verde */
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, opacity 0.2s;
+}
+
+.btn-finish:hover {
+  background-color: #27ae60;
+  /* Verde más oscuro */
+}
+
+.btn-finish:disabled {
+  background-color: #95a5a6;
+  /* Gris */
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fab.inactive {
+    background-color: #7f8c8d; /* Un color gris para indicar que está inactivo */
+}
+
+/* Ajustes responsivos (tablet y pantallas más anchas) */
+@media (min-width: 700px) {
+  .sheet {
+    left: 18px;
+    right: 18px;
+    bottom: 24px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .sheet-row {
+    gap: 20px;
+  }
+
+  .sheet-right {
+    width: 220px;
+    align-items: flex-end;
+  }
+
+  .fab {
+    right: 32px;
+    bottom: 160px;
+  }
+}
+
+/* Pequeños toques finales: coherencia visual con cards */
+.sheet,
+.topbar,
+.icon-btn,
+.btn-primary {
+  transition: box-shadow .18s, transform .12s;
+}
+
+/* Evita que el texto en .value crezca demasiado */
+.sheet-left .value {
+  max-width: 100%;
+}
+
+/* Soporte para iconos de font-awesome: tamaño adecuado */
+.icon-btn i,
+.fab i,
+.btn-primary i {
+  font-size: 16px;
+}
+
+/* Fin — mobile.css estilizado según routes.css */

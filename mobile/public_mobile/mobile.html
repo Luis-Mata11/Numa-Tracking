@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seguimiento móvil — Rastreo</title>
+
+  <!-- Google Maps CSS -->
+  <style>
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+  </style>
+  <!-- Iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Tu CSS separado -->
+  <link rel="stylesheet" href="./css/mobile.css" />
+</head>
+
+<body>
+  <!-- Mapa a pantalla completa -->
+  <div id="map" aria-hidden="true"></div>
+
+  <!-- Top bar (compacta para móvil) -->
+  <header class="topbar" role="banner" aria-label="Barra superior">
+    <div class="logo-container">
+      <div class="logo">
+        <img src="./img/log.png" alt="NUMA logo">
+      </div>
+      <div>
+        <h1>NUMA Movil</h1>
+        <p class="muted">CHOFERS </p>
+      </div>
+    </div>
+    <div class="title">
+      <strong>Rastreo</strong>
+      <small id="top-sub" class="muted">En curso / Pendiente</small>
+    </div>
+
+
+
+  </header>
+
+  <!-- Bottom sheet con información -->
+  <aside class="sheet" role="region" aria-label="Panel de ruta">
+    <span class="grab" aria-hidden="true"></span>
+
+    <div class="sheet-row">
+      <div class="sheet-left">
+        <div class="label">Ruta</div>
+        <div id="route-name" class="value">— Sin seleccionar —</div>
+
+        <div class="label" style="margin-top:10px">Chofer</div>
+        <div id="driver-name" class="value">— —</div>
+
+        <div class="label" style="margin-top:10px">Estado del chofer</div>
+        <div id="driver-status" class="value" style="color: #2ecc71; font-weight: 600; font-size: 14px;">
+          <i class="fa-solid fa-circle" style="color: #2ecc71; margin-right: 5px;"></i>
+          <span id="driver-status-text">Conectando...</span>
+        </div>
+      </div>
+
+      <div class="sheet-right">
+        <div class="label">Estado de Ruta</div>
+        <div id="route-status" class="status bad">Pendiente</div>
+
+        <button id="btn-finish-route" class="btn-finish" disabled>
+          <i class="fa-solid fa-flag-checkered"></i> Finalizar Ruta
+        </button>
+      </div>
+    </div>
+
+    <div class="sheet-foot">
+      <div class="foot-left">
+        <small class="muted">Última posición</small>
+        <div id="coords" class="micro">—</div>
+      </div>
+
+      <div class="foot-actions">
+        <button id="btn-center" class="btn-ghost" title="Centrar mapa"><i
+            class="fa-solid fa-location-crosshairs"></i></button>
+        <button id="btn-zoom" class="btn-ghost" title="Ajustar zoom"><i
+            class="fa-solid fa-search-location"></i></button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Floating action: mi ubicación -->
+  <button id="fab-mypos" class="fab" aria-label="Mi posición"><i class="fa-solid fa-map-pin"></i></button>
+
+  <!-- Toast pequeño -->
+  <div id="toast" class="toast" role="status" aria-live="polite">Solicitud enviada</div>
+
+  <!-- Socket.IO client (necesario antes de tu mobile.js) -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- Tu script principal con Google Maps (define initMap global) -->
+  <script src="./js/mobile-google-maps.js"></script>
+
+  <!-- Google Maps API (cargar de forma asíncrona y llamar a initMap) -->
+<script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBu4L9CermVPfjvYhSa6WXCQAzyA7pdBFo&callback=initMap&libraries=geometry,places"></script>
+
+  <!-- Tu lógica de cliente móvil -->
+  <script src="./js/mobile-client.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,23 @@
+/* styles.css */
+body {
+  margin: 0;
+  font-family: sans-serif;
+  background: #f5f5f5;
+  color: #333;
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+button {
+  background-color: #0a1433;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
