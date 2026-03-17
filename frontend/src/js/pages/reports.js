@@ -9,7 +9,7 @@ import {
     fetchVehicles,
     fetchRecorrido,
     buildProxyMapUrl
-} from '../../api/reports.api.js';
+} from '../api/reports.api.js';
 
 // ─── Estado global ────────────────────────────────────────────────────────────
 const state = {
