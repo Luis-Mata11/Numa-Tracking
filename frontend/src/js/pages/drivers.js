@@ -1,76 +1,149 @@
 // src/js/pages/choferes.js
-import '../../css/drivers.css'; // <-- VITE HARÁ LA MAGIA CON ESTO
 
-import '../../css/loader.css'; // Importamos el CSS del loader
+import '../../css/drivers.css';
+import '../../css/loader.css';
 import { showLoader, hideLoader } from '../utils/loader.js';
+import { showNotification } from '../utils/utils.ui.js';
+import { fetchDrivers, saveDriver, deleteDriver } from '../api/drivers.api.js';
 
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/drivers';
+// ─── Estado del módulo ────────────────────────────────────────────────────────
 let driversList = [];
 let currentDriver = null;
 let isEditing = false;
-let elements = {}; // Lo dejamos vacío por ahora
+let elements = {};
 
-const DriverService = {
-    getHeaders() {
-        const token = sessionStorage.getItem('numa_token');
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        };
-    },
-    async getAll() {
-        const res = await fetch(`${API_BASE}/drivers`, { headers: this.getHeaders() }); if (!res.ok) throw new Error('Error al obtener choferes');
-        return res.json();
-    },
-    async create(data) {
-        const res = await fetch(`${API_BASE}/drivers`, {
-            method: 'POST',
-            headers: this.getHeaders(),
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Error al crear');
-        return result;
-    },
-    async update(id, data) {
-        const res = await fetch(`${API_BASE}/drivers/${id}`, {
-            method: 'PUT',
-            headers: this.getHeaders(),
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Error al actualizar');
-        return result;
-    },
-    async delete(id) {
-        const res = await fetch(`${API_BASE}/drivers/${id}`, {
-            method: 'DELETE',
-            headers: this.getHeaders()
-        });
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Error al eliminar');
-        return result;
+// ─── Inicialización ───────────────────────────────────────────────────────────
+export async function init() {
+    console.log('🚗 Módulo de Choferes iniciado');
+    showLoader();
+
+    try {
+        cacheElements();
+        setupUIEvents();
+        await loadInitialData();
+    } catch (error) {
+        console.error('🔥 Error iniciando el módulo de choferes:', error);
+    } finally {
+        hideLoader();
     }
-};
+}
 
+function cacheElements() {
+    elements = {
+        listContainer:  document.getElementById('chofer-items'),
+        detailContainer:document.getElementById('chofer-detail'),
+        btnNew:         document.getElementById('btn-new-chofer'),
+        searchInput:    document.getElementById('search-driver'),
+        formTemplate:   document.getElementById('driver-form-template')
+    };
+}
+
+// ─── Carga de datos ───────────────────────────────────────────────────────────
+async function loadInitialData() {
+    try {
+        driversList = await fetchDrivers();
+        UI.renderList(driversList);
+    } catch (error) {
+        console.error('Error cargando choferes:', error);
+        if (elements.listContainer) {
+            elements.listContainer.innerHTML =
+                '<li class="empty-msg error">Error de conexión con el servidor.</li>';
+        }
+    }
+}
+
+// ─── Eventos globales ─────────────────────────────────────────────────────────
+function setupUIEvents() {
+    elements.btnNew?.addEventListener('click', () => {
+        currentDriver = null;
+        isEditing = false;
+        UI.renderList(driversList);
+        UI.renderForm();
+    });
+
+    elements.searchInput?.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = driversList.filter(d =>
+            d.nombre?.toLowerCase().includes(query) ||
+            d.id?.toLowerCase().includes(query)
+        );
+        UI.renderList(filtered);
+    });
+}
+
+// ─── Acciones ─────────────────────────────────────────────────────────────────
+async function handleDelete(driver) {
+    if (!confirm(`¿Estás seguro de eliminar al chofer ${driver.nombre}?`)) return;
+
+    try {
+        await deleteDriver(driver.id);
+        showNotification('Chofer eliminado con éxito', 'warning');
+        driversList = await fetchDrivers();
+        UI.renderList(driversList);
+        UI.renderEmptyDetail();
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+async function handleFormSubmit(e, driver, inputs) {
+    e.preventDefault();
+    const { inputId, inputNombre, inputLicencia, inputTelefono, inputEmail } = inputs;
+
+    const driverData = {
+        id:       inputId.value.trim(),
+        nombre:   inputNombre.value.trim(),
+        licencia: inputLicencia.value.trim(),
+        telefono: inputTelefono.value.trim(),
+        email:    inputEmail.value.trim()
+    };
+
+    const editingId = isEditing ? driver.id : null;
+
+    try {
+        await saveDriver(driverData, editingId);
+        showNotification(
+            isEditing ? 'Chofer actualizado con éxito' : 'Chofer creado con éxito',
+            'success'
+        );
+
+        driversList = await fetchDrivers();
+        UI.renderList(driversList);
+
+        if (isEditing) {
+            currentDriver = driversList.find(d => d.id === driver.id);
+            UI.renderDetail(currentDriver);
+        } else {
+            UI.renderEmptyDetail();
+        }
+
+        isEditing = false;
+    } catch (error) {
+        showNotification(error.message, 'error');
+    }
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
 const UI = {
     renderList(drivers) {
         if (!elements.listContainer) return;
         elements.listContainer.innerHTML = '';
 
-        if (drivers.length === 0) {
-            elements.listContainer.innerHTML = '<li class="empty-msg" style="padding:15px; color:#888;">No hay choferes registrados.</li>';
+        if (!drivers.length) {
+            elements.listContainer.innerHTML =
+                '<li class="empty-msg">No hay choferes registrados.</li>';
             return;
         }
 
         drivers.forEach(driver => {
             const li = document.createElement('li');
             li.className = 'chofer-item';
-            if (currentDriver && currentDriver.id === driver.id) li.classList.add('active');
+            if (currentDriver?.id === driver.id) li.classList.add('is-active');
 
             li.innerHTML = `
-                <div class="chofer-avatar"><i class="fa fa-user"></i></div>
+                <div class="chofer-avatar">
+                    <i class="fa fa-user"></i>
+                </div>
                 <div class="chofer-info-list">
                     <strong>${driver.nombre}</strong>
                     <span>${driver.id}</span>
@@ -89,12 +162,17 @@ const UI = {
 
     renderDetail(driver) {
         if (!elements.detailContainer) return;
+
         elements.detailContainer.innerHTML = `
             <div class="detail-header">
                 <h2>Detalles del Chofer</h2>
                 <div class="action-buttons">
-                    <button id="btn-edit" class="secondary-btn"><i class="fa fa-pen"></i> Editar</button>
-                    <button id="btn-delete" class="btn-danger"><i class="fa fa-trash"></i> Eliminar</button>
+                    <button id="btn-edit" class="btn-secondary">
+                        <i class="fa fa-pen"></i> Editar
+                    </button>
+                    <button id="btn-delete" class="btn-danger">
+                        <i class="fa fa-trash"></i> Eliminar
+                    </button>
                 </div>
             </div>
             <div class="detail-body">
@@ -111,17 +189,9 @@ const UI = {
             UI.renderForm(driver);
         });
 
-        document.getElementById('btn-delete').addEventListener('click', async () => {
-            if (confirm(`¿Estás seguro de eliminar al chofer ${driver.nombre}?`)) {
-                try {
-                    await DriverService.delete(driver.id);
-                    await App.loadData();
-                    UI.renderEmptyDetail();
-                } catch (error) {
-                    alert(error.message);
-                }
-            }
-        });
+        document.getElementById('btn-delete').addEventListener('click', () =>
+            handleDelete(driver)
+        );
     },
 
     renderForm(driver = null) {
@@ -129,138 +199,41 @@ const UI = {
         elements.detailContainer.innerHTML = '';
         elements.detailContainer.appendChild(template);
 
-        const form = document.getElementById('driver-form');
-        const title = document.getElementById('form-title');
-        const inputId = document.getElementById('driver-id');
-        const inputNombre = document.getElementById('driver-name');
+        const form          = document.getElementById('driver-form');
+        const title         = document.getElementById('form-title');
+        const inputId       = document.getElementById('driver-id');
+        const inputNombre   = document.getElementById('driver-name');
         const inputLicencia = document.getElementById('driver-license');
         const inputTelefono = document.getElementById('driver-phone');
-        const inputEmail = document.getElementById('driver-email');
+        const inputEmail    = document.getElementById('driver-email');
 
         if (driver) {
-            title.textContent = 'Editar Chofer';
-            inputId.value = driver.id;
-            inputId.disabled = true;
-            inputNombre.value = driver.nombre;
-            inputLicencia.value = driver.licencia || '';
-            inputTelefono.value = driver.telefono || '';
-            inputEmail.value = driver.email || '';
+            title.textContent    = 'Editar Chofer';
+            inputId.value        = driver.id;
+            inputId.disabled     = true;
+            inputNombre.value    = driver.nombre   || '';
+            inputLicencia.value  = driver.licencia || '';
+            inputTelefono.value  = driver.telefono || '';
+            inputEmail.value     = driver.email    || '';
         } else {
             title.textContent = 'Nuevo Chofer';
         }
 
         document.getElementById('btn-cancel-form').addEventListener('click', () => {
             isEditing = false;
-            if (currentDriver) {
-                UI.renderDetail(currentDriver);
-            } else {
-                UI.renderEmptyDetail();
-            }
+            currentDriver ? UI.renderDetail(currentDriver) : UI.renderEmptyDetail();
         });
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = {
-                id: inputId.value,
-                nombre: inputNombre.value,
-                licencia: inputLicencia.value,
-                telefono: inputTelefono.value,
-                email: inputEmail.value
-            };
-
-            try {
-                if (isEditing) {
-                    await DriverService.update(driver.id, formData);
-                    alert('Chofer actualizado con éxito');
-                } else {
-                    await DriverService.create(formData);
-                    alert('Chofer creado con éxito');
-                }
-
-                await App.loadData();
-
-                if (isEditing) {
-                    currentDriver = driversList.find(d => d.id === driver.id);
-                    UI.renderDetail(currentDriver);
-                } else {
-                    UI.renderEmptyDetail();
-                }
-                isEditing = false;
-
-            } catch (error) {
-                alert(error.message);
-            }
-        });
+        form.addEventListener('submit', (e) =>
+            handleFormSubmit(e, driver, { inputId, inputNombre, inputLicencia, inputTelefono, inputEmail })
+        );
     },
 
     renderEmptyDetail() {
         currentDriver = null;
         if (elements.detailContainer) {
-            elements.detailContainer.innerHTML = `<p id="initial-message" style="text-align:center; margin-top:50px; color:#888;">Selecciona un chofer o crea uno nuevo.</p>`;
+            elements.detailContainer.innerHTML =
+                '<p class="empty-detail-msg">Selecciona un chofer o crea uno nuevo.</p>';
         }
     }
 };
-
-const App = {
-    async loadData() {
-        try {
-            driversList = await DriverService.getAll();
-            UI.renderList(driversList);
-        } catch (error) {
-            console.error('Error cargando datos:', error);
-            if (elements.listContainer) {
-                elements.listContainer.innerHTML = '<li class="empty-msg">Error de conexión con el servidor.</li>';
-            }
-        }
-    }
-};
-
-// 🛠️ LA MAGIA DEL ROUTER: Exportamos init()
-export async function init() { // 👈 Lo hacemos asíncrono
-    console.log("🚛 Módulo de Choferes iniciado");
-
-    // 🟢 1. Encendemos el loader
-    showLoader();
-
-    try {
-        // 2. Recién aquí buscamos los elementos en el DOM (porque ya están inyectados)
-        elements = {
-            listContainer: document.getElementById('chofer-items'),
-            detailContainer: document.getElementById('chofer-detail'),
-            btnNew: document.getElementById('btn-new-chofer'),
-            searchInput: document.getElementById('search-driver'),
-            formTemplate: document.getElementById('driver-form-template')
-        };
-
-        // 3. Asignamos eventos
-        if (elements.btnNew) {
-            elements.btnNew.addEventListener('click', () => {
-                currentDriver = null;
-                isEditing = false;
-                UI.renderList(driversList);
-                UI.renderForm();
-            });
-        }
-
-        if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const filtered = driversList.filter(d =>
-                    d.nombre.toLowerCase().includes(query) ||
-                    d.id.toLowerCase().includes(query)
-                );
-                UI.renderList(filtered);
-            });
-        }
-
-        // 4. Cargamos la data
-        // 👈 Le ponemos 'await' para que el logo siga girando hasta que lleguen los datos
-        await App.loadData();
-
-    } catch (error) {
-        console.error("🔥 Error cargando el módulo de choferes:", error);
-    } finally {
-        // 🔴 5. Apagamos el loader pase lo que pase
-        hideLoader();
-    }
-}
