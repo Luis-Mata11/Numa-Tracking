@@ -1,6 +1,6 @@
 // routes/api/mapproxy.js
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 
 const GMAPS_KEY = process.env.GOOGLE_MAPS_KEY || process.env.GMAPS_STATIC_KEY || '';
 
@@ -13,31 +13,29 @@ router.get('/', async (req, res) => {
         const w = parseInt(req.query.w) || 700;
         const h = parseInt(req.query.h) || 280;
 
-        // 1. Construimos la URL base sin URLSearchParams para evitar sobre-codificación
         let url = `https://maps.googleapis.com/maps/api/staticmap?size=${w}x${h}&scale=2&maptype=roadmap&key=${GMAPS_KEY}`;
 
-        // 2. Trayecto planeado (polilínea) — Codificamos SOLO la polilínea
         if (req.query.polyline) {
             const encPoly = encodeURIComponent(req.query.polyline);
-            // %7C es el código seguro para el separador "|"
             url += `&path=color:0x9E9E9Ecc%7Cweight:4%7Cenc:${encPoly}`;
         }
 
-        // 3. Trayecto real (coordenadas crudas)
+        // req.query.path llega decodificado por Express como "lat,lng|lat,lng"
+        // Re-encodamos cada punto individualmente para que Google lo acepte
         if (req.query.path) {
-            const encPath = encodeURIComponent(req.query.path);
-            url += `&path=color:0x2196F3ff%7Cweight:5%7C${encPath}`;
+            const pathSegments = req.query.path
+                .split('|')
+                .map(seg => encodeURIComponent(seg))
+                .join('%7C');
+            url += `&path=color:0x2196F3ff%7Cweight:5%7C${pathSegments}`;
         }
 
-        // 4. Validación de longitud (Límite estricto de Google: 8192 caracteres)
         if (url.length > 8192) {
-            console.warn(`[mapproxy] ⚠️ ADVERTENCIA: La URL supera los 8192 caracteres (${url.length}). Google rechazará esta petición.`);
-            // Podríamos retornar un error 400 aquí, pero dejaremos que Google responda para ver el log.
+            console.warn(`[mapproxy] ⚠️ URL supera 8192 chars (${url.length}). Google puede rechazarla.`);
         }
 
-        // 5. Petición a Google
         const fetchFn = global.fetch || require('node-fetch');
-        const imgRes = await fetchFn(url);
+        const imgRes  = await fetchFn(url);
 
         if (!imgRes.ok) {
             const errorText = await imgRes.text();
@@ -46,12 +44,17 @@ router.get('/', async (req, res) => {
         }
 
         const contentType = imgRes.headers.get('content-type') || 'image/png';
-        const buffer = await imgRes.arrayBuffer();
+        const buffer      = await imgRes.arrayBuffer();
 
-        res.set('Content-Type', contentType);
-        res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-        res.set('Access-Control-Allow-Origin', '*');
-        res.set('Cache-Control', 'public, max-age=3600');
+        // ─── Headers necesarios para que el browser no bloquee la imagen ──────
+        // Cross-Origin-Resource-Policy: permite que el frontend (distinto origen) cargue esta imagen
+        // Access-Control-Allow-Origin: necesario para fetch() y html2canvas
+        res.set('Content-Type',                  contentType);
+        res.set('Cross-Origin-Resource-Policy',  'cross-origin');
+        res.set('Access-Control-Allow-Origin',   '*');
+        res.set('Cache-Control',                 'public, max-age=3600');
+        // ─────────────────────────────────────────────────────────────────────
+
         res.send(Buffer.from(buffer));
 
     } catch (err) {
