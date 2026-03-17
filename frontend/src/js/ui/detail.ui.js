@@ -4,7 +4,7 @@ import { escapeHtml } from '../utils/helpers.js';
 import { setCurrentDetailRoute } from '../state/routes.store.js';
 import { initOrResizeMainMap, drawRouteOnDetailMap } from '../services/maps.service.js';
 import { showNotification } from '../utils/utils.ui.js';
-import { updateRouteStatus }     from '../api/routes.api.js'; // ← FIX: reemplaza fetch + API_URL
+import { updateRouteStatus } from '../api/routes.api.js';
 
 const normalizeRoute = (route) => route;
 
@@ -184,18 +184,8 @@ export function showRouteDetailUI(route) {
                 btn.innerHTML = 'Iniciando...';
                 btn.disabled = true;
 
-                // ✅ Ahora
-                await updateRouteStatus(r._id, 'start');      // Iniciar
-                await updateRouteStatus(r._id, 'cancelled');   // Cancelar
-                const result = await response.json();
-
-                if (!response.ok) {
-                    showNotification(result.message || 'El chofer aún no ha accedido a la ruta.', 'warning');
-                    btn.innerHTML = 'Iniciar ruta';
-                    btn.disabled = false;
-                    return;
-                }
-
+                // ✅ PONER ESTO
+                await updateRouteStatus(r._id, 'start');
                 showNotification('Ruta iniciada. Redirigiendo al mapa en vivo...', 'success');
                 setTimeout(() => { window.location.href = '/'; }, 1500);
 
@@ -216,21 +206,8 @@ export function showRouteDetailUI(route) {
                     btn.innerHTML = 'Cancelando...';
                     btn.disabled = true;
 
-                    const token = sessionStorage.getItem('numa_token');
-                    // Usamos el endpoint de finalizar, pero le pasamos un flag de status cancelado
-                    const response = await fetch(`${API_URL}/routes/${r._id || r.id}/status`, { // <-- Cambiamos /finish por /status
-                        method: 'PATCH',                                                   // <-- Cambiamos POST por PATCH
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({ status: 'cancelled' })
-                    });
-
-                    if (!response.ok) {
-                        const errText = await response.text();
-                        throw new Error(errText);
-                    }
+                    // ✅ PONER ESTO
+                    await updateRouteStatus(r._id || r.id, 'cancelled');
 
                     showNotification('Ruta cancelada exitosamente.', 'success');
 
