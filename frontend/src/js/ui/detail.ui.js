@@ -4,6 +4,7 @@ import { escapeHtml } from '../utils/helpers.js';
 import { setCurrentDetailRoute } from '../state/routes.store.js';
 import { initOrResizeMainMap, drawRouteOnDetailMap } from '../services/maps.service.js';
 import { showNotification } from '../utils/utils.ui.js';
+import { updateRouteStatus }     from '../api/routes.api.js'; // ← FIX: reemplaza fetch + API_URL
 
 const normalizeRoute = (route) => route;
 
@@ -183,11 +184,9 @@ export function showRouteDetailUI(route) {
                 btn.innerHTML = 'Iniciando...';
                 btn.disabled = true;
 
-                const token = sessionStorage.getItem('numa_token');
-                const response = await fetch(`${API_URL}/routes/${r._id}/start`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-                });
+                // ✅ Ahora
+                await updateRouteStatus(r._id, 'start');      // Iniciar
+                await updateRouteStatus(r._id, 'cancelled');   // Cancelar
                 const result = await response.json();
 
                 if (!response.ok) {
