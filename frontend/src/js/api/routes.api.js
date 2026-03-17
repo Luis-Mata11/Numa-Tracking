@@ -34,26 +34,26 @@ async function authFetch(endpoint, options = {}) { // <-- Cambié 'url' por 'end
 // ==========================================
 
 export async function fetchRoutes() {
-    const res = await authFetch('/api/routes');
+    const res = await authFetch('/routes');
     if (!res.ok) throw new Error('Error cargando rutas');
     return res.json();
 }
 
 export async function fetchVehicles() {
-    const res = await authFetch('/api/vehicles');
+    const res = await authFetch('/vehicles');
     if (!res.ok) return [];
     return res.json();
 }
 
 export async function fetchDrivers() {
-    const res = await authFetch('/api/drivers');
+    const res = await authFetch('/drivers');
     if (!res.ok) return [];
     return res.json();
 }
 
 export async function saveRoute(routeData, editingId = null) {
     const method = editingId ? 'PUT' : 'POST';
-    const url = editingId ? `/api/routes/${editingId}` : '/api/routes';
+    const url = editingId ? `/routes/${editingId}` : '/routes';
 
     const res = await authFetch(url, {
         method,
@@ -68,7 +68,7 @@ export async function saveRoute(routeData, editingId = null) {
 }
 
 export async function updateRouteStatus(id, action) {
-    const res = await authFetch(`/api/routes/${id}/status`, {
+    const res = await authFetch(`/routes/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ action })
     });
@@ -77,7 +77,7 @@ export async function updateRouteStatus(id, action) {
 }
 
 export async function deleteRoute(id) {
-    const res = await authFetch(`/api/routes/${id}`, {
+    const res = await authFetch(`/routes/${id}`, {
         method: 'DELETE'
     });
     if (!res.ok) throw new Error('Error eliminando ruta');
