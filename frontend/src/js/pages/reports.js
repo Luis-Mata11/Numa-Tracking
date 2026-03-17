@@ -301,26 +301,58 @@ const PDFManager = {
             routes.map(r => ReportService.fetchRecorrido(r._id || r.id))
         );
 
+        // Pre-convertimos todos los mapas a base64 para que html2canvas los capture sin CORS
+        const mapImages = await Promise.all(
+            routes.map((r, i) => this._fetchMapBase64(r, recorridos[i]))
+        );
+
         const header1 = await this._header(elements.reportTitle?.textContent || 'Reporte');
         this._setContent(
             header1 +
             `<div class="pdf-routes-list">
-                ${routes.map((r, i) => this._buildRouteCard(r, recorridos[i])).join('')}
+                ${routes.map((r, i) => this._buildRouteCard(r, recorridos[i], mapImages[i])).join('')}
             </div>`
         );
     },
 
     async openSingleDetail(route) {
         this._openModal();
-        const recorrido = await ReportService.fetchRecorrido(route._id || route.id);
-        const header2 = await this._header('Detalle de Ruta');
+        const recorrido  = await ReportService.fetchRecorrido(route._id || route.id);
+        const mapImageB64 = await this._fetchMapBase64(route, recorrido);
+        const header2    = await this._header('Detalle de Ruta');
         this._setContent(
             header2 +
-            `<div class="pdf-routes-list">${this._buildRouteCard(route, recorrido)}</div>`
+            `<div class="pdf-routes-list">${this._buildRouteCard(route, recorrido, mapImageB64)}</div>`
         );
     },
 
-    _buildRouteCard(route, recorridoData) {
+    async _fetchMapBase64(route, recorridoData) {
+        try {
+            const posiciones = recorridoData?.recorrido?.posiciones || [];
+            const hasMap     = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
+            if (!hasMap) return null;
+
+            const mapUrl = buildProxyMapUrl({
+                encodedPolyline: route.trayecto?.encodedPolyline,
+                realPositions:   posiciones
+            });
+
+            const res = await fetch(mapUrl);
+            if (!res.ok) return null;
+
+            const blob = await res.blob();
+            return await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror   = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch {
+            return null;
+        }
+    },
+
+    _buildRouteCard(route, recorridoData, mapB64 = null) {
         const driverName   = getDriverName(route);
         const vehicleName  = getVehicleName(route);
         const dateStr      = getCompletionDate(route).toLocaleString('es-MX', { dateStyle: 'long', timeStyle: 'short' });
@@ -334,18 +366,15 @@ const PDFManager = {
         const eventos      = (recorridoData?.bitacora || []).filter(e => e.action !== 'trace');
 
         const hasMap  = !!(route.trayecto?.encodedPolyline || posiciones.length >= 2);
-        const mapUrl  = hasMap
-            ? buildProxyMapUrl({
-                encodedPolyline: route.trayecto?.encodedPolyline,
-                realPositions:   posiciones
-              })
-            : '';
-        const mapHtml = hasMap
-            ? `<img src="${mapUrl}" class="pdf-map-img" alt="Mapa comparativo" />`
-            : `<div class="pdf-map-placeholder">
-                   <i class="fa-solid fa-map" style="font-size:2rem;opacity:0.3;"></i>
-                   <p>Sin datos de mapa</p>
-               </div>`;
+        // mapB64 viene pre-cargado como base64 para que html2canvas lo capture sin CORS
+        const mapHtml = (hasMap && mapB64)
+            ? `<img src="${mapB64}" class="pdf-map-img" alt="Mapa comparativo" />`
+            : hasMap
+                ? `<div class="pdf-map-placeholder"><i class="fa-solid fa-spinner fa-spin"></i><p>Mapa no disponible</p></div>`
+                : `<div class="pdf-map-placeholder">
+                       <i class="fa-solid fa-map" style="font-size:2rem;opacity:0.3;"></i>
+                       <p>Sin datos de mapa</p>
+                   </div>`;
 
         const eventosHtml = eventos.length
             ? eventos.map(e => `
