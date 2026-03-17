@@ -3,7 +3,7 @@
 import '../../css/vehicles.css';
 import '../../css/loader.css';
 import { showLoader, hideLoader } from '../utils/loader.js';
-import { showNotification } from '../modules/utils/utils.ui.js';
+import { showNotification } from '../utils/utils.ui.js';
 import { fetchVehicles, saveVehicle, deleteVehicle } from '../api/vehicles.api.js';
 
 // ─── Estado del módulo ────────────────────────────────────────────────────────
