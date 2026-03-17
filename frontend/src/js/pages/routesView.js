@@ -3,7 +3,7 @@ import '../../css/routes.css';
 import '../../css/routes-detail-compat.css';
 import { showNotification } from '../utils/utils.ui.js';
 import '../../css/loader.css'; // Importamos el CSS del loader
-import { showLoader, hideLoader } from '../utils/loader.js'; 
+import { showLoader, hideLoader } from '../utils/loader.js';
 // Añade esto junto a tus otras importaciones
 import { populateFiltersFromRoutes, setupSearch } from '../ui/filters.ui.js';
 
@@ -11,6 +11,10 @@ import { initOrResizeDrawMap, clearDrawMap, setDrawMode, drawStartFromBase, getR
 import { setRoutes } from '../state/routes.store.js';
 import { renderRoutes } from '../ui/list.ui.js';
 import { fetchRoutes, fetchVehicles, fetchDrivers, saveRoute, deleteRoute } from '../api/routes.api.js';
+// ... tus imports arriba ...
+
+// Vite inyectará la URL correcta dependiendo del entorno
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 let currentVehicles = [];
 let currentDrivers = [];
@@ -34,7 +38,9 @@ export async function init() {
         } // ← setInterval cierra aquí
 
         // ── Socket: escuchar cuando el chofer ingresa ──────────────────────
-        const socket = window.io ? window.io('http://localhost:4000') : null;
+        // Tomamos la API_URL y le quitamos '/api' para la conexión del socket
+        const SOCKET_URL = API_URL.replace('/api', '');
+        const socket = window.io ? window.io(SOCKET_URL) : null;
 
         if (socket) {
             socket.on('routeReady', (data) => {
@@ -54,7 +60,7 @@ export async function init() {
                             ? { ...r, driverIsReady: true }
                             : r
                     ));
-                }).catch(() => {});
+                }).catch(() => { });
             });
         } else {
             console.warn('⚠️ Socket.io no disponible — verifica que el <script> de socket.io esté cargado.');
@@ -233,12 +239,12 @@ function setupUIEvents() {
             document.getElementById('status-filter').value = '';
             document.getElementById('vehicle-filter').value = '';
             document.getElementById('driver-filter').value = '';
-            
+
             // Disparamos artificialmente el evento 'input' para que la búsqueda vacía recargue todo
             if (searchInput) {
                 searchInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
-            
+
             filterPopup.classList.add('hidden'); // Cerramos el popup al limpiar
         });
     }
@@ -253,7 +259,7 @@ async function loadBaseCoords() {
         };
 
         // ── ÚNICO PASO: Obtener las bases (que ya incluye el defaultBaseId) ──
-        const basesRes = await fetch('http://localhost:4000/api/bases', {
+        const basesRes = await fetch(`${API_URL}/bases`, {
             method: 'GET',
             headers
         });
@@ -299,7 +305,7 @@ async function loadBaseCoords() {
         // 5. Extraemos latitud y longitud asegurando el orden de GeoJSON [lng, lat]
         const lat = basePrincipal.ubicacion.coordinates[1];
         const lng = basePrincipal.ubicacion.coordinates[0];
-        
+
         console.log(`✅ Base operativa cargada → lat: ${lat}, lng: ${lng}`);
 
         // 6. 🚀 EL DETALLE CLAVE: Retornamos el objeto para que tu MapsService lo use

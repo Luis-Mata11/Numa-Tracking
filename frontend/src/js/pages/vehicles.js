@@ -4,7 +4,7 @@ import '../../css/loader.css'; // Importamos el CSS del loader
 import { showLoader, hideLoader } from '../utils/loader.js'; 
 
 
-const API_URL = 'http://localhost:4000/api/vehicles'; 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/vehicles'; 
 let vehiclesList = [];
 let currentVehicle = null;
 let isEditing = false;
