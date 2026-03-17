@@ -1,14 +1,14 @@
 // src/js/pages/vehicles.js
 import '../../css/vehicles.css'; // <-- VITE HARÁ LA MAGIA CON ESTO
 import '../../css/loader.css'; // Importamos el CSS del loader
-import { showLoader, hideLoader } from '../utils/loader.js'; 
+import { showLoader, hideLoader } from '../utils/loader.js';
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/vehicles'; 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/vehicles';
 let vehiclesList = [];
 let currentVehicle = null;
 let isEditing = false;
-let elements = {}; 
+let elements = {};
 
 const VehicleService = {
     getHeaders() {
@@ -19,12 +19,13 @@ const VehicleService = {
         };
     },
     async getAll() {
-        const res = await fetch(API_URL, { headers: this.getHeaders() });
+        // 2. Aquí le sumamos el recurso específico (/vehicles)
+        const res = await fetch(`${API_BASE}/vehicles`, { headers: this.getHeaders() });
         if (!res.ok) throw new Error('Error al obtener vehículos');
         return res.json();
     },
     async create(data) {
-        const res = await fetch(API_URL, {
+        const res = await fetch(`${API_BASE}/vehicles`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify(data)
@@ -34,7 +35,7 @@ const VehicleService = {
         return result;
     },
     async update(id, data) {
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_BASE}/vehicles/${id}`, {
             method: 'PUT',
             headers: this.getHeaders(),
             body: JSON.stringify(data)
@@ -44,7 +45,7 @@ const VehicleService = {
         return result;
     },
     async delete(id) {
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_BASE}/vehicles/${id}`, {
             method: 'DELETE',
             headers: this.getHeaders()
         });
@@ -69,7 +70,7 @@ const UI = {
             li.className = 'vehicle-item';
             li.style.cssText = 'padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 10px;';
             if (currentVehicle && currentVehicle.id === vehicle.id) li.style.backgroundColor = '#f0f8ff';
-            
+
             li.innerHTML = `
                 <div class="vehicle-icon"><i class="fa-solid fa-truck" style="color: #555;"></i></div>
                 <div class="vehicle-info-list" style="display: flex; flex-direction: column;">
@@ -77,13 +78,13 @@ const UI = {
                     <span style="font-size: 0.85em; color: #666;">${vehicle.marca} ${vehicle.modelo}</span>
                 </div>
             `;
-            
+
             li.addEventListener('click', () => {
                 currentVehicle = vehicle;
-                UI.renderList(vehiclesList); 
+                UI.renderList(vehiclesList);
                 UI.renderDetail(vehicle);
             });
-            
+
             elements.listContainer.appendChild(li);
         });
     },
@@ -177,9 +178,9 @@ const UI = {
                     await VehicleService.create(formData);
                     alert('Vehículo registrado con éxito');
                 }
-                
+
                 await App.loadData();
-                
+
                 if (isEditing) {
                     currentVehicle = vehiclesList.find(v => v.id === vehicle.id);
                     UI.renderDetail(currentVehicle);
@@ -196,7 +197,7 @@ const UI = {
 
     renderEmptyDetail() {
         currentVehicle = null;
-        if(elements.detailContainer) {
+        if (elements.detailContainer) {
             elements.detailContainer.innerHTML = `<p id="initial-message" style="text-align:center; margin-top:50px; color:#888;">Selecciona un vehículo o registra uno nuevo.</p>`;
         }
     }
@@ -209,7 +210,7 @@ const App = {
             UI.renderList(vehiclesList);
         } catch (error) {
             console.error('Error cargando datos:', error);
-            if(elements.listContainer) {
+            if (elements.listContainer) {
                 elements.listContainer.innerHTML = '<li class="empty-msg" style="color: red; padding: 15px;">Error de conexión con el servidor.</li>';
             }
         }
@@ -218,10 +219,10 @@ const App = {
 
 export async function init() { // 👈 Ojo aquí: agregamos "async"
     console.log("🚛 Módulo de Vehículos iniciado");
-    
+
     // 🟢 1. Encendemos el loader
     showLoader();
-    
+
     try {
         // 2. Buscamos los elementos inyectados en el DOM
         elements = {
@@ -237,7 +238,7 @@ export async function init() { // 👈 Ojo aquí: agregamos "async"
             elements.btnNew.addEventListener('click', () => {
                 currentVehicle = null;
                 isEditing = false;
-                UI.renderList(vehiclesList); 
+                UI.renderList(vehiclesList);
                 UI.renderForm();
             });
         }
@@ -245,8 +246,8 @@ export async function init() { // 👈 Ojo aquí: agregamos "async"
         if (elements.searchInput) {
             elements.searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                const filtered = vehiclesList.filter(v => 
-                    v.id.toLowerCase().includes(query) || 
+                const filtered = vehiclesList.filter(v =>
+                    v.id.toLowerCase().includes(query) ||
                     (v.alias && v.alias.toLowerCase().includes(query)) ||
                     v.marca.toLowerCase().includes(query)
                 );
@@ -256,7 +257,7 @@ export async function init() { // 👈 Ojo aquí: agregamos "async"
 
         // 4. Cargar la data
         // 👈 Ojo aquí: agregamos "await" para que el loader espere a que termine
-        await App.loadData(); 
+        await App.loadData();
 
     } catch (error) {
         console.error("🔥 Error cargando el módulo de vehículos:", error);

@@ -2,10 +2,10 @@
 import '../../css/drivers.css'; // <-- VITE HARÁ LA MAGIA CON ESTO
 
 import '../../css/loader.css'; // Importamos el CSS del loader
-import { showLoader, hideLoader } from '../utils/loader.js'; 
+import { showLoader, hideLoader } from '../utils/loader.js';
 
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/drivers'; 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/drivers';
 let driversList = [];
 let currentDriver = null;
 let isEditing = false;
@@ -13,19 +13,18 @@ let elements = {}; // Lo dejamos vacío por ahora
 
 const DriverService = {
     getHeaders() {
-        const token = sessionStorage.getItem('numa_token'); 
+        const token = sessionStorage.getItem('numa_token');
         return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         };
     },
     async getAll() {
-        const res = await fetch(API_URL, { headers: this.getHeaders() });
-        if (!res.ok) throw new Error('Error al obtener choferes');
+        const res = await fetch(`${API_BASE}/drivers`, { headers: this.getHeaders() }); if (!res.ok) throw new Error('Error al obtener choferes');
         return res.json();
     },
     async create(data) {
-        const res = await fetch(API_URL, {
+        const res = await fetch(`${API_BASE}/drivers`, {
             method: 'POST',
             headers: this.getHeaders(),
             body: JSON.stringify(data)
@@ -35,7 +34,7 @@ const DriverService = {
         return result;
     },
     async update(id, data) {
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_BASE}/drivers/${id}`, {
             method: 'PUT',
             headers: this.getHeaders(),
             body: JSON.stringify(data)
@@ -45,7 +44,7 @@ const DriverService = {
         return result;
     },
     async delete(id) {
-        const res = await fetch(`${API_URL}/${id}`, {
+        const res = await fetch(`${API_BASE}/drivers/${id}`, {
             method: 'DELETE',
             headers: this.getHeaders()
         });
@@ -69,7 +68,7 @@ const UI = {
             const li = document.createElement('li');
             li.className = 'chofer-item';
             if (currentDriver && currentDriver.id === driver.id) li.classList.add('active');
-            
+
             li.innerHTML = `
                 <div class="chofer-avatar"><i class="fa fa-user"></i></div>
                 <div class="chofer-info-list">
@@ -77,13 +76,13 @@ const UI = {
                     <span>${driver.id}</span>
                 </div>
             `;
-            
+
             li.addEventListener('click', () => {
                 currentDriver = driver;
-                UI.renderList(driversList); 
+                UI.renderList(driversList);
                 UI.renderDetail(driver);
             });
-            
+
             elements.listContainer.appendChild(li);
         });
     },
@@ -177,9 +176,9 @@ const UI = {
                     await DriverService.create(formData);
                     alert('Chofer creado con éxito');
                 }
-                
+
                 await App.loadData();
-                
+
                 if (isEditing) {
                     currentDriver = driversList.find(d => d.id === driver.id);
                     UI.renderDetail(currentDriver);
@@ -196,7 +195,7 @@ const UI = {
 
     renderEmptyDetail() {
         currentDriver = null;
-        if(elements.detailContainer) {
+        if (elements.detailContainer) {
             elements.detailContainer.innerHTML = `<p id="initial-message" style="text-align:center; margin-top:50px; color:#888;">Selecciona un chofer o crea uno nuevo.</p>`;
         }
     }
@@ -209,7 +208,7 @@ const App = {
             UI.renderList(driversList);
         } catch (error) {
             console.error('Error cargando datos:', error);
-            if(elements.listContainer) {
+            if (elements.listContainer) {
                 elements.listContainer.innerHTML = '<li class="empty-msg">Error de conexión con el servidor.</li>';
             }
         }
@@ -219,7 +218,7 @@ const App = {
 // 🛠️ LA MAGIA DEL ROUTER: Exportamos init()
 export async function init() { // 👈 Lo hacemos asíncrono
     console.log("🚛 Módulo de Choferes iniciado");
-    
+
     // 🟢 1. Encendemos el loader
     showLoader();
 
@@ -238,7 +237,7 @@ export async function init() { // 👈 Lo hacemos asíncrono
             elements.btnNew.addEventListener('click', () => {
                 currentDriver = null;
                 isEditing = false;
-                UI.renderList(driversList); 
+                UI.renderList(driversList);
                 UI.renderForm();
             });
         }
@@ -246,8 +245,8 @@ export async function init() { // 👈 Lo hacemos asíncrono
         if (elements.searchInput) {
             elements.searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                const filtered = driversList.filter(d => 
-                    d.nombre.toLowerCase().includes(query) || 
+                const filtered = driversList.filter(d =>
+                    d.nombre.toLowerCase().includes(query) ||
                     d.id.toLowerCase().includes(query)
                 );
                 UI.renderList(filtered);
@@ -256,7 +255,7 @@ export async function init() { // 👈 Lo hacemos asíncrono
 
         // 4. Cargamos la data
         // 👈 Le ponemos 'await' para que el logo siga girando hasta que lleguen los datos
-        await App.loadData(); 
+        await App.loadData();
 
     } catch (error) {
         console.error("🔥 Error cargando el módulo de choferes:", error);
