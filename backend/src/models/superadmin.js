@@ -20,4 +20,4 @@ superAdminSchema.methods.verificarPassword = function (plain) {
     return bcrypt.compare(plain, this.password);
 };
 
-module.exports = mongoose.model('SuperAdmin', superAdminSchema);
+module.exports = mongoose.model('superadmin', superAdminSchema);

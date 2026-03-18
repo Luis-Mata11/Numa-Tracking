@@ -1,4 +1,4 @@
-// routes/api/superadmin.js
+// routes/api/superAdmin.js
 const express    = require('express');
 const router     = express.Router();
 const jwt        = require('jsonwebtoken');
