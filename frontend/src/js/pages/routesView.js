@@ -124,22 +124,20 @@ function setupRouteBuilderUI() {
     btnEnd.disabled = true;
 
     // Escuchamos cuando el mapa nos avise que ya se puso el inicio
+    // ✅ { once: true } se auto-elimina después de dispararse una vez
     document.addEventListener('mapStartSet', () => {
-        console.log("🔔 Evento mapStartSet recibido. Habilitando paradas y final.");
         btnBase.disabled = true;
         btnManual.disabled = true;
         btnStops.disabled = false;
         btnEnd.disabled = false;
-    });
+    }, { once: true });
 
     document.addEventListener('mapEndSet', () => {
-        console.log("🔔 Evento mapEndSet recibido. Bloqueando herramientas de dibujo.");
         btnBase.disabled = true;
         btnManual.disabled = true;
         btnStops.disabled = true;
         btnEnd.disabled = true;
-        // Nota: No bloqueamos btnClear para que el usuario pueda arrepentirse y reiniciar el mapa.
-    });
+    }, { once: true });
 
     // 1. INICIO DESDE BASE
     btnBase.addEventListener('click', () => {
@@ -210,11 +208,7 @@ function setupUIEvents() {
         btnClosePanel.addEventListener('click', () => {
             document.getElementById('new-route-panel')?.classList.remove('open');
             clearDrawMap();
-            // Resetear botones
-            document.getElementById('btn-start-base').disabled = false;
-            document.getElementById('btn-start-manual').disabled = false;
-            document.getElementById('btn-add-stops').disabled = true;
-            document.getElementById('btn-add-end').disabled = true;
+            _resetDrawButtons(); // ← función que centraliza el reset
         });
     }
 
@@ -446,4 +440,16 @@ function populateSelects(vehicles, drivers) {
             dSelect.appendChild(opt);
         });
     }
+
+    function _resetDrawButtons() {
+        const btnBase = document.getElementById('btn-use-base');
+        const btnManual = document.getElementById('btn-draw-origin');
+        const btnStops = document.getElementById('btn-add-waypoint');
+        const btnEnd = document.getElementById('btn-draw-dest');
+        if (btnBase) btnBase.disabled = false;
+        if (btnManual) btnManual.disabled = false;
+        if (btnStops) btnStops.disabled = true;
+        if (btnEnd) btnEnd.disabled = true;
+    }
+
 }
