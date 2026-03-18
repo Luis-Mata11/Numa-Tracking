@@ -191,6 +191,16 @@ function setupRouteBuilderUI() {
     }
 }
 
+function _resetDrawButtons() {
+        const btnBase = document.getElementById('btn-use-base');
+        const btnManual = document.getElementById('btn-draw-origin');
+        const btnStops = document.getElementById('btn-add-waypoint');
+        const btnEnd = document.getElementById('btn-draw-dest');
+        if (btnBase) btnBase.disabled = false;
+        if (btnManual) btnManual.disabled = false;
+        if (btnStops) btnStops.disabled = true;
+        if (btnEnd) btnEnd.disabled = true;
+    }
 // ... (Aquí van loadInitialData y populateSelects tal cual los tienes) ...
 
 function setupUIEvents() {
@@ -441,15 +451,5 @@ function populateSelects(vehicles, drivers) {
         });
     }
 
-    function _resetDrawButtons() {
-        const btnBase = document.getElementById('btn-use-base');
-        const btnManual = document.getElementById('btn-draw-origin');
-        const btnStops = document.getElementById('btn-add-waypoint');
-        const btnEnd = document.getElementById('btn-draw-dest');
-        if (btnBase) btnBase.disabled = false;
-        if (btnManual) btnManual.disabled = false;
-        if (btnStops) btnStops.disabled = true;
-        if (btnEnd) btnEnd.disabled = true;
-    }
 
 }
