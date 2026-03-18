@@ -10,6 +10,8 @@ const authRoutes      = require('./routes/api/auth');
 const basesRoutes     = require('./routes/api/bases');
 const recorridoRoutes = require('./routes/api/recorrido');
 const mapProxyRoutes  = require('./routes/api/mapproxy');
+const adminLicensesRoutes = require('./routes/api/admin.licenses');
+const superadminRoutes = require('./routes/api/superAdmin');
 
 const app = express();
 
@@ -25,6 +27,9 @@ app.use('/api/routes',    routesRoutes);
 app.use('/api/auth',      authRoutes);
 app.use('/api/bases',     basesRoutes);
 app.use('/api/recorrido', recorridoRoutes);
+app.use('/api/admin/licenses', adminLicensesRoutes);
+app.use('/api/superadmin', superadminRoutes);
+
 
 // ─── Frontend (build de Vite) ─────────────────────────────────────────────────
 // Ajustamos el path al dist generado por Vite

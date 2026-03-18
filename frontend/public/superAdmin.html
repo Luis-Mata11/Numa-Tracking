@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NUMA · Superadmin</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+    --bg:      #0f1724;
+    --surface: #1a2236;
+    --card:    #212d42;
+    --border:  #2a3a54;
+    --text:    #e8edf5;
+    --muted:   #7a8fad;
+    --accent:  #4f8ef7;
+    --green:   #10b981;
+    --yellow:  #f59e0b;
+    --red:     #ef4444;
+    --radius:  12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── LOGIN ── */
+#login-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at 60% 30%, #1a2f5e 0%, #0f1724 70%);
+}
+.login-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; padding: 44px 40px; width: 380px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.login-card h1 { font-size: 22px; margin-bottom: 6px; }
+.login-card p  { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; letter-spacing: .5px; }
+.field input {
+    width: 100%; padding: 11px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 14px; outline: none; transition: border-color .2s;
+}
+.field input:focus { border-color: var(--accent); }
+.btn-primary {
+    width: 100%; padding: 12px; border: none; border-radius: 8px;
+    background: var(--accent); color: #fff; font-weight: 700;
+    font-size: 14px; cursor: pointer; transition: filter .2s;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.error-msg { color: var(--red); font-size: 13px; margin-top: 12px; display: none; }
+
+/* ── APP ── */
+#app-screen { display: none; }
+.topbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+}
+.topbar-brand { font-weight: 800; font-size: 17px; letter-spacing: .5px; }
+.topbar-brand span { color: var(--accent); }
+.topbar-right { display: flex; align-items: center; gap: 16px; }
+.admin-name { font-size: 13px; color: var(--muted); }
+.btn-logout {
+    padding: 7px 14px; border-radius: 7px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font-size: 12px; cursor: pointer;
+    transition: border-color .2s, color .2s;
+}
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+.main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+}
+.stat-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-card .value { font-size: 30px; font-weight: 800; margin-top: 6px; }
+.stat-card .sublabel { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+/* ── TOOLBAR ── */
+.toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+.search-input {
+    flex: 1; padding: 10px 14px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card);
+    color: var(--text); font-size: 13px; outline: none;
+}
+.search-input:focus { border-color: var(--accent); }
+.filter-select {
+    padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: 13px; cursor: pointer;
+}
+
+/* ── TABLE ── */
+.table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead { background: var(--surface); }
+th { padding: 12px 16px; text-align: left; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+td { padding: 14px 16px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
+tr { cursor: pointer; transition: background .15s; }
+tr:hover td { background: rgba(79,142,247,.05); }
+.mono { font-family: monospace; font-size: 12px; color: var(--accent); }
+.badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700;
+}
+.badge.activa    { background: rgba(16,185,129,.15); color: var(--green); }
+.badge.trial     { background: rgba(245,158,11,.15);  color: var(--yellow); }
+.badge.vencida   { background: rgba(239,68,68,.15);   color: var(--red); }
+.badge.cancelada { background: rgba(122,143,173,.15); color: var(--muted); }
+.plan-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: 10px; font-weight: 800; letter-spacing: .5px;
+}
+.plan-TRIAL       { background: #1e2d45; color: var(--muted); }
+.plan-PRO         { background: #1a3050; color: var(--accent); }
+.plan-CORPORATIVO { background: #2a1f4a; color: #a78bfa; }
+.usage-bar { width: 80px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.usage-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .3s; }
+.usage-fill.warn  { background: var(--yellow); }
+.usage-fill.full  { background: var(--red); }
+
+/* ── MODAL ── */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.65);
+    backdrop-filter: blur(4px); z-index: 1000;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 18px; width: 560px; max-width: 100%;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,.6);
+    animation: modalIn .25s ease;
+}
+@keyframes modalIn { from { transform: translateY(20px); opacity: 0; } }
+.modal-header {
+    padding: 24px 28px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between;
+}
+.modal-header h2 { font-size: 17px; }
+.modal-header p  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.btn-close-modal {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; padding: 4px;
+}
+.modal-body { padding: 24px 28px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.info-item label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.info-item p { font-size: 14px; margin-top: 3px; }
+.section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; margin-top: 20px; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.action-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; cursor: pointer; transition: border-color .2s;
+}
+.action-card:hover { border-color: var(--accent); }
+.action-card .action-title { font-size: 13px; font-weight: 600; }
+.action-card .action-desc  { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.action-form { margin-top: 10px; display: none; }
+.action-form.open { display: block; }
+.action-form select, .action-form input {
+    width: 100%; padding: 9px 12px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 13px; margin-top: 8px; outline: none;
+}
+.btn-confirm {
+    margin-top: 10px; width: 100%; padding: 10px; border: none;
+    border-radius: 7px; background: var(--accent); color: #fff;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.usage-list { display: flex; flex-direction: column; gap: 6px; }
+.usage-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; font-size: 12px;
+}
+.toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+    background: var(--green); color: #fff; padding: 12px 20px;
+    border-radius: 10px; font-size: 13px; font-weight: 600;
+    box-shadow: 0 6px 20px rgba(0,0,0,.3); transform: translateY(10px);
+    opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { background: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ───────────────────────────────────────────────────── -->
+<div id="login-screen">
+    <div class="login-card">
+        <h1>NUMA <span style="color:var(--accent)">Superadmin</span></h1>
+        <p>Panel de control de clientes y licencias</p>
+        <div class="field">
+            <label>EMAIL</label>
+            <input type="email" id="sa-email" placeholder="admin@numa.mx" />
+        </div>
+        <div class="field">
+            <label>CONTRASEÑA</label>
+            <input type="password" id="sa-password" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary" id="btn-sa-login">Ingresar</button>
+        <div class="error-msg" id="login-error"></div>
+    </div>
+</div>
+
+<!-- ── APP ────────────────────────────────────────────────────── -->
+<div id="app-screen">
+    <div class="topbar">
+        <div class="topbar-brand">NUMA <span>·</span> Superadmin</div>
+        <div class="topbar-right">
+            <span class="admin-name" id="admin-name-display"></span>
+            <button class="btn-logout" id="btn-sa-logout"><i class="fa fa-sign-out-alt"></i> Salir</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Total clientes</div>
+                <div class="value" id="stat-total">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Activos</div>
+                <div class="value" style="color:var(--green)" id="stat-activos">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Trial</div>
+                <div class="value" style="color:var(--yellow)" id="stat-trial">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Vencidos</div>
+                <div class="value" style="color:var(--red)" id="stat-vencidos">—</div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <input class="search-input" id="sa-search" placeholder="Buscar por nombre, email o clave…" />
+            <select class="filter-select" id="sa-filter">
+                <option value="">Todos los estados</option>
+                <option value="activa">Activa</option>
+                <option value="trial">Trial</option>
+                <option value="vencida">Vencida</option>
+            </select>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Clave / Tenant</th>
+                        <th>Cliente</th>
+                        <th>Plan</th>
+                        <th>Estado</th>
+                        <th>Vence</th>
+                        <th>Días</th>
+                        <th>Vehículos</th>
+                        <th>Uso</th>
+                    </tr>
+                </thead>
+                <tbody id="sa-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL DETALLE ────────────────────────────────────────────── -->
+<div class="modal-overlay" id="detail-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <h2 id="modal-client-name">—</h2>
+                <p id="modal-client-email">—</p>
+            </div>
+            <button class="btn-close-modal" id="btn-close-detail">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="info-grid">
+                <div class="info-item"><label>Tenant ID</label><p class="mono" id="modal-tenant">—</p></div>
+                <div class="info-item"><label>Empresa</label><p id="modal-empresa">—</p></div>
+                <div class="info-item"><label>Plan</label><p id="modal-plan">—</p></div>
+                <div class="info-item"><label>Estado</label><p id="modal-estado">—</p></div>
+                <div class="info-item"><label>Fecha inicio</label><p id="modal-inicio">—</p></div>
+                <div class="info-item"><label>Fecha fin</label><p id="modal-fin">—</p></div>
+                <div class="info-item"><label>Vehículos actuales</label><p id="modal-veh-actual">—</p></div>
+                <div class="info-item"><label>Límite vehículos</label><p id="modal-veh-limite">—</p></div>
+            </div>
+
+            <div class="section-title">Acciones</div>
+            <div class="action-grid">
+
+                <!-- Cambiar plan -->
+                <div class="action-card" onclick="toggleActionForm('form-plan')">
+                    <div class="action-title"><i class="fa fa-layer-group" style="color:var(--accent);margin-right:6px;"></i>Cambiar plan</div>
+                    <div class="action-desc">Trial → Pro → Corporativo</div>
+                    <div class="action-form" id="form-plan">
+                        <select id="input-plan">
+                            <option value="TRIAL">Trial (3 vehículos)</option>
+                            <option value="PRO">Pro (5 vehículos)</option>
+                            <option value="CORPORATIVO">Corporativo (8 vehículos)</option>
+                        </select>
+                        <button class="btn-confirm" onclick="ejecutarAccion('plan')">Confirmar</button>
+                    </div>
+                </div>
+
+                <!-- Extender licencia -->
+                <div class="action-card" onclick="toggleActionForm('form-extender')">
+                    <div class="action-title"><i class="fa fa-calendar-plus" style="color:var(--green);margin-right:6px;"></i>Extender licencia</div>
+                    <div class="action-desc">Añadir días desde hoy</div>
+                    <div class="action-form" id="form-extender">
+                        <input type="number" id="input-dias" placeholder="Ej: 30" min="1" />
+                        <button class="btn-confirm" onclick="ejecutarAccion('extender')">Confirmar</button>
+                    </div>
+                </div>
+
+                <!-- Vehículos extra -->
+                <div class="action-card" onclick="toggleActionForm('form-veh')">
+                    <div class="action-title"><i class="fa fa-truck" style="color:var(--yellow);margin-right:6px;"></i>Vehículos extra</div>
+                    <div class="action-desc">Slots adicionales sobre el plan</div>
+                    <div class="action-form" id="form-veh">
+                        <input type="number" id="input-veh-extra" placeholder="Ej: 2" min="0" />
+                        <button class="btn-confirm" onclick="ejecutarAccion('vehiculos')">Confirmar</button>
+                    </div>
+                </div>
+
+                <!-- Ver uso detallado -->
+                <div class="action-card" onclick="verUsoDetallado()">
+                    <div class="action-title"><i class="fa fa-chart-bar" style="color:var(--muted);margin-right:6px;"></i>Ver uso detallado</div>
+                    <div class="action-desc">Choferes, rutas y vehículos</div>
+                </div>
+
+            </div>
+
+            <div id="uso-detallado" style="display:none;">
+                <div class="section-title">Uso detallado</div>
+                <div class="usage-list" id="uso-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const API = ''; // mismo origen
+let saToken       = localStorage.getItem('sa_token') || '';
+let listaClientes = [];
+let clienteActual = null;
+
+// ── Utilidades ────────────────────────────────────────────────────────────────
+function showToast(msg, isError = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (isError ? ' error' : '');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function fmt(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function saHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${saToken}` };
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+document.getElementById('btn-sa-login').addEventListener('click', async () => {
+    const email    = document.getElementById('sa-email').value.trim();
+    const password = document.getElementById('sa-password').value;
+    const errEl    = document.getElementById('login-error');
+    const btn      = document.getElementById('btn-sa-login');
+
+    errEl.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Verificando...';
+
+    try {
+        const res  = await fetch(`${API}/api/superadmin/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.msg);
+
+        saToken = data.token;
+        localStorage.setItem('sa_token', saToken);
+        document.getElementById('admin-name-display').textContent = data.usuario.nombre;
+        document.getElementById('login-screen').style.display  = 'none';
+        document.getElementById('app-screen').style.display    = 'block';
+        cargarClientes();
+    } catch (err) {
+        errEl.textContent    = err.message;
+        errEl.style.display  = 'block';
+        btn.disabled         = false;
+        btn.textContent      = 'Ingresar';
+    }
+});
+
+document.getElementById('btn-sa-logout').addEventListener('click', () => {
+    localStorage.removeItem('sa_token');
+    saToken = '';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display   = 'none';
+});
+
+// ── Inicialización si ya hay token ────────────────────────────────────────────
+if (saToken) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display   = 'block';
+    cargarClientes();
+}
+
+// ── Carga de datos ────────────────────────────────────────────────────────────
+async function cargarClientes() {
+    try {
+        const res  = await fetch(`${API}/api/superadmin/clientes`, { headers: saHeaders() });
+        if (res.status === 401 || res.status === 403) {
+            localStorage.removeItem('sa_token');
+            window.location.reload();
+            return;
+        }
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.msg);
+        listaClientes = data.data;
+        renderStats();
+        renderTabla(listaClientes);
+    } catch (err) {
+        showToast('Error cargando datos: ' + err.message, true);
+    }
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats() {
+    document.getElementById('stat-total').textContent    = listaClientes.length;
+    document.getElementById('stat-activos').textContent  = listaClientes.filter(c => c.licencia?.estado === 'activa').length;
+    document.getElementById('stat-trial').textContent    = listaClientes.filter(c => c.licencia?.estado === 'trial').length;
+    document.getElementById('stat-vencidos').textContent = listaClientes.filter(c => c.licencia?.estado === 'vencida' || !c.licencia).length;
+}
+
+// ── Tabla ─────────────────────────────────────────────────────────────────────
+function renderTabla(data) {
+    const tbody = document.getElementById('sa-tbody');
+    tbody.innerHTML = '';
+
+    if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">Sin registros</td></tr>';
+        return;
+    }
+
+    data.forEach(c => {
+        const lic     = c.licencia || {};
+        const estado  = lic.estado || 'sin licencia';
+        const dias    = lic.diasRestantes ?? '—';
+        const vehAct  = c.uso?.vehiculos ?? 0;
+        const vehLim  = lic.limiteVehiculos ?? '—';
+        const pct     = vehLim ? Math.round((vehAct / vehLim) * 100) : 0;
+        const fillCls = pct >= 100 ? 'full' : pct >= 80 ? 'warn' : '';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><span class="mono">${c.tenantId || '—'}</span></td>
+            <td>
+                <div style="font-weight:600;">${c.nombre}</div>
+                <div style="font-size:11px;color:var(--muted);">${c.email}</div>
+            </td>
+            <td><span class="plan-badge plan-${lic.plan || 'TRIAL'}">${lic.plan || 'TRIAL'}</span></td>
+            <td><span class="badge ${estado}">${estado.toUpperCase()}</span></td>
+            <td>${fmt(lic.fechaFin)}</td>
+            <td style="color:${dias <= 3 ? 'var(--red)' : dias <= 7 ? 'var(--yellow)' : 'var(--text)'};font-weight:600;">
+                ${typeof dias === 'number' ? dias + 'd' : '—'}
+            </td>
+            <td>${vehAct} / ${vehLim}</td>
+            <td>
+                <div class="usage-bar">
+                    <div class="usage-fill ${fillCls}" style="width:${Math.min(pct,100)}%;"></div>
+                </div>
+            </td>
+        `;
+        tr.addEventListener('click', () => abrirDetalle(c));
+        tbody.appendChild(tr);
+    });
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────────
+document.getElementById('sa-search').addEventListener('input', filtrar);
+document.getElementById('sa-filter').addEventListener('change', filtrar);
+
+function filtrar() {
+    const q      = document.getElementById('sa-search').value.toLowerCase();
+    const estado = document.getElementById('sa-filter').value;
+    const result = listaClientes.filter(c => {
+        const matchText  = c.nombre.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.tenantId || '').toLowerCase().includes(q);
+        const matchEstado = !estado || c.licencia?.estado === estado;
+        return matchText && matchEstado;
+    });
+    renderTabla(result);
+}
+
+// ── Modal detalle ─────────────────────────────────────────────────────────────
+function abrirDetalle(c) {
+    clienteActual = c;
+    const lic = c.licencia || {};
+
+    document.getElementById('modal-client-name').textContent = c.nombre;
+    document.getElementById('modal-client-email').textContent = c.email;
+    document.getElementById('modal-tenant').textContent    = c.tenantId;
+    document.getElementById('modal-empresa').textContent   = c.empresa;
+    document.getElementById('modal-plan').textContent      = lic.plan || '—';
+    document.getElementById('modal-estado').textContent    = lic.estado || '—';
+    document.getElementById('modal-inicio').textContent    = fmt(lic.fechaInicio);
+    document.getElementById('modal-fin').textContent       = fmt(lic.fechaFin);
+    document.getElementById('modal-veh-actual').textContent = c.uso?.vehiculos ?? '—';
+    document.getElementById('modal-veh-limite').textContent = lic.limiteVehiculos ?? '—';
+
+    // Pre-seleccionar plan actual
+    document.getElementById('input-plan').value = lic.plan || 'TRIAL';
+
+    // Ocultar formularios y uso detallado
+    ['form-plan', 'form-extender', 'form-veh'].forEach(id => {
+        document.getElementById(id).classList.remove('open');
+    });
+    document.getElementById('uso-detallado').style.display = 'none';
+
+    document.getElementById('detail-modal').classList.add('open');
+}
+
+document.getElementById('btn-close-detail').addEventListener('click', () => {
+    document.getElementById('detail-modal').classList.remove('open');
+});
+document.getElementById('detail-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('detail-modal')) {
+        document.getElementById('detail-modal').classList.remove('open');
+    }
+});
+
+function toggleActionForm(id) {
+    const el = document.getElementById(id);
+    const wasOpen = el.classList.contains('open');
+    ['form-plan', 'form-extender', 'form-veh'].forEach(i => document.getElementById(i).classList.remove('open'));
+    if (!wasOpen) el.classList.add('open');
+}
+
+// ── Acciones ──────────────────────────────────────────────────────────────────
+async function ejecutarAccion(tipo) {
+    if (!clienteActual) return;
+    const tenantId = clienteActual.tenantId;
+    let endpoint, body;
+
+    if (tipo === 'plan') {
+        const plan = document.getElementById('input-plan').value;
+        endpoint   = `/api/superadmin/licencias/${tenantId}/plan`;
+        body       = { plan };
+    } else if (tipo === 'extender') {
+        const dias = parseInt(document.getElementById('input-dias').value);
+        if (!dias || dias <= 0) return showToast('Ingresa los días a extender.', true);
+        endpoint   = `/api/superadmin/licencias/${tenantId}/extender`;
+        body       = { dias };
+    } else if (tipo === 'vehiculos') {
+        const extra = parseInt(document.getElementById('input-veh-extra').value);
+        if (isNaN(extra) || extra < 0) return showToast('Ingresa un número válido.', true);
+        endpoint    = `/api/superadmin/licencias/${tenantId}/vehiculos-extra`;
+        body        = { vehiculosExtra: extra };
+    }
+
+    try {
+        const res  = await fetch(`${API}${endpoint}`, {
+            method:  'PATCH',
+            headers: saHeaders(),
+            body:    JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.msg);
+
+        showToast(data.msg || 'Acción realizada con éxito');
+        document.getElementById('detail-modal').classList.remove('open');
+        cargarClientes();
+    } catch (err) {
+        showToast(err.message, true);
+    }
+}
+
+async function verUsoDetallado() {
+    if (!clienteActual) return;
+    const div = document.getElementById('uso-detallado');
+    div.style.display = div.style.display === 'none' ? 'block' : 'none';
+    if (div.style.display === 'none') return;
+
+    try {
+        const res  = await fetch(`${API}/api/superadmin/clientes/${clienteActual.tenantId}`, { headers: saHeaders() });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.msg);
+
+        const list = document.getElementById('uso-list');
+        list.innerHTML = '';
+
+        const items = [
+            ...data.uso.vehiculos.map(v => `🚛 ${v.alias || v.placa} — ${v.marca || '—'}`),
+            ...data.uso.choferes.map(d => `👤 ${d.nombre} — ${d.email}`),
+            ...data.uso.rutas.map(r => `📍 ${r.name} — ${r.status}`)
+        ];
+
+        if (!items.length) {
+            list.innerHTML = '<div style="color:var(--muted);font-size:13px;">Sin datos registrados.</div>';
+            return;
+        }
+
+        items.forEach(text => {
+            const div = document.createElement('div');
+            div.className = 'usage-row';
+            div.textContent = text;
+            list.appendChild(div);
+        });
+    } catch (err) {
+        showToast('Error cargando uso: ' + err.message, true);
+    }
+}
+</script>
+</body>
+</html>
