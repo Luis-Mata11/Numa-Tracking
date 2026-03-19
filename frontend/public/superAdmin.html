@@ -295,26 +295,30 @@ tr:hover td { background: rgba(79,142,247,.05); }
             <div class="section-title">Acciones</div>
             <div class="action-grid">
 
-                <!-- Cambiar plan -->
+                <!-- Activar plan -->
                 <div class="action-card" onclick="toggleActionForm('form-plan')">
-                    <div class="action-title"><i class="fa fa-layer-group" style="color:var(--accent);margin-right:6px;"></i>Cambiar plan</div>
-                    <div class="action-desc">Trial → Pro → Corporativo</div>
+                    <div class="action-title"><i class="fa fa-layer-group" style="color:var(--accent);margin-right:6px;"></i>Activar plan</div>
+                    <div class="action-desc">Asignar plan con periodo de pago</div>
                     <div class="action-form" id="form-plan">
                         <select id="input-plan">
-                            <option value="TRIAL">Trial (3 vehículos)</option>
                             <option value="PRO">Pro (5 vehículos)</option>
                             <option value="CORPORATIVO">Corporativo (8 vehículos)</option>
                         </select>
-                        <button class="btn-confirm" onclick="ejecutarAccion('plan')">Confirmar</button>
+                        <select id="input-periodo" style="margin-top:8px;">
+                            <option value="mensual">Mensual (30 días)</option>
+                            <option value="anual">Anual (365 días)</option>
+                        </select>
+                        <div id="plan-preview" style="margin-top:8px;font-size:11px;color:var(--muted);"></div>
+                        <button class="btn-confirm" onclick="ejecutarAccion('activar')">Confirmar activación</button>
                     </div>
                 </div>
 
-                <!-- Extender licencia -->
+                <!-- Extender manualmente -->
                 <div class="action-card" onclick="toggleActionForm('form-extender')">
-                    <div class="action-title"><i class="fa fa-calendar-plus" style="color:var(--green);margin-right:6px;"></i>Extender licencia</div>
-                    <div class="action-desc">Añadir días desde hoy</div>
+                    <div class="action-title"><i class="fa fa-calendar-plus" style="color:var(--green);margin-right:6px;"></i>Extender manualmente</div>
+                    <div class="action-desc">Añadir días libres (soporte, cortesía)</div>
                     <div class="action-form" id="form-extender">
-                        <input type="number" id="input-dias" placeholder="Ej: 30" min="1" />
+                        <input type="number" id="input-dias" placeholder="Ej: 7" min="1" />
                         <button class="btn-confirm" onclick="ejecutarAccion('extender')">Confirmar</button>
                     </div>
                 </div>
@@ -349,7 +353,7 @@ tr:hover td { background: rgba(79,142,247,.05); }
 
 <script>
 // ── Config ────────────────────────────────────────────────────────────────────
-const API = 'https://numa-backend-k5hq.onrender.com'; // mismo origen
+const API = ''; // mismo origen
 let saToken       = localStorage.getItem('sa_token') || '';
 let listaClientes = [];
 let clienteActual = null;
@@ -492,6 +496,11 @@ function renderTabla(data) {
 // ── Filtros ───────────────────────────────────────────────────────────────────
 document.getElementById('sa-search').addEventListener('input', filtrar);
 document.getElementById('sa-filter').addEventListener('change', filtrar);
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'input-periodo' || e.target.id === 'input-plan') {
+        actualizarPreviewPlan();
+    }
+});
 
 function filtrar() {
     const q      = document.getElementById('sa-search').value.toLowerCase();
@@ -545,7 +554,29 @@ function toggleActionForm(id) {
     const el = document.getElementById(id);
     const wasOpen = el.classList.contains('open');
     ['form-plan', 'form-extender', 'form-veh'].forEach(i => document.getElementById(i).classList.remove('open'));
-    if (!wasOpen) el.classList.add('open');
+    if (!wasOpen) {
+        el.classList.add('open');
+        if (id === 'form-plan') actualizarPreviewPlan();
+    }
+}
+
+function actualizarPreviewPlan() {
+    const preview = document.getElementById('plan-preview');
+    if (!preview || !clienteActual) return;
+    const periodo  = document.getElementById('input-periodo')?.value || 'mensual';
+    const dias     = periodo === 'anual' ? 365 : 30;
+    const lic      = clienteActual.licencia || {};
+    const esTrialOVencida = lic.estado === 'trial' || lic.estado === 'vencida' || !lic.estado;
+    const diasRestantes   = lic.diasRestantes || 0;
+
+    if (esTrialOVencida) {
+        preview.textContent = `⚠️ Reemplaza los ${diasRestantes}d de trial. Nueva duración: ${dias} días.`;
+        preview.style.color = 'var(--yellow)';
+    } else {
+        const total = diasRestantes + dias;
+        preview.textContent = `✅ Suma ${dias}d a los ${diasRestantes}d restantes = ${total} días en total.`;
+        preview.style.color = 'var(--green)';
+    }
 }
 
 // ── Acciones ──────────────────────────────────────────────────────────────────
@@ -554,10 +585,11 @@ async function ejecutarAccion(tipo) {
     const tenantId = clienteActual.tenantId;
     let endpoint, body;
 
-    if (tipo === 'plan') {
-        const plan = document.getElementById('input-plan').value;
-        endpoint   = `/api/superadmin/licencias/${tenantId}/plan`;
-        body       = { plan };
+    if (tipo === 'activar') {
+        const plan    = document.getElementById('input-plan').value;
+        const periodo = document.getElementById('input-periodo').value;
+        endpoint      = `/api/superadmin/licencias/${tenantId}/activar`;
+        body          = { plan, periodo };
     } else if (tipo === 'extender') {
         const dias = parseInt(document.getElementById('input-dias').value);
         if (!dias || dias <= 0) return showToast('Ingresa los días a extender.', true);

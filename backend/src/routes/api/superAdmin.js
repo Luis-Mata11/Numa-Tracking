@@ -1,4 +1,4 @@
-// routes/api/superAdmin.js
+// routes/api/superadmin.js
 const express    = require('express');
 const router     = express.Router();
 const jwt        = require('jsonwebtoken');
@@ -225,6 +225,64 @@ router.patch('/licencias/:tenantId/vehiculos-extra', requireSA, async (req, res)
             limiteTotal: limiteBase + vehiculosExtra
         });
     } catch (err) {
+        res.status(500).json({ ok: false, msg: 'Error interno.' });
+    }
+});
+
+// ─── PATCH /api/superadmin/licencias/:tenantId/activar ───────────────────────
+// Activa o renueva un plan con periodo mensual (30d) o anual (365d).
+// - Si está en trial o vencida → reemplaza días restantes
+// - Si ya está activa          → suma días encima de los que quedan
+router.patch('/licencias/:tenantId/activar', requireSA, async (req, res) => {
+    try {
+        const { plan, periodo } = req.body;
+        const planesValidos  = ['PRO', 'CORPORATIVO'];
+        const periodosValidos = ['mensual', 'anual'];
+
+        if (!planesValidos.includes(plan)) {
+            return res.status(400).json({ ok: false, msg: `Plan inválido. Opciones: ${planesValidos.join(', ')}` });
+        }
+        if (!periodosValidos.includes(periodo)) {
+            return res.status(400).json({ ok: false, msg: 'Periodo inválido. Usa: mensual o anual.' });
+        }
+
+        const dias = periodo === 'anual' ? 365 : 30;
+
+        const licencia = await License.findOne({ clave: req.params.tenantId });
+        if (!licencia) return res.status(404).json({ ok: false, msg: 'Licencia no encontrada.' });
+
+        const hoy  = new Date();
+        const esTrialOVencida = licencia.estado === 'trial'
+            || licencia.estado === 'vencida'
+            || new Date(licencia.fechaFin) <= hoy;
+
+        let nuevaFechaFin;
+        if (esTrialOVencida) {
+            // Reemplazar: la nueva fecha es hoy + días del plan
+            nuevaFechaFin = new Date(hoy);
+            nuevaFechaFin.setDate(nuevaFechaFin.getDate() + dias);
+        } else {
+            // Sumar: la nueva fecha es la fecha actual de fin + días adicionales
+            nuevaFechaFin = new Date(licencia.fechaFin);
+            nuevaFechaFin.setDate(nuevaFechaFin.getDate() + dias);
+        }
+
+        licencia.plan     = plan;
+        licencia.estado   = 'activa';
+        licencia.fechaFin = nuevaFechaFin;
+        await licencia.save();
+
+        const accion = esTrialOVencida ? 'reemplazados' : 'sumados';
+        res.json({
+            ok:       true,
+            msg:      `Plan ${plan} activado. ${dias} días ${accion}. Vence: ${nuevaFechaFin.toLocaleDateString('es-MX')}.`,
+            plan,
+            periodo,
+            fechaFin: nuevaFechaFin,
+            dias
+        });
+    } catch (err) {
+        console.error(err);
         res.status(500).json({ ok: false, msg: 'Error interno.' });
     }
 });
