@@ -2,8 +2,8 @@
 // ÚNICO CAMBIO: getRoutes ahora lee RecorridoReal en lugar de BitacoraRuta para recorridoReal.
 // El resto de las funciones (createRoute, updateRoute, etc.) no cambia.
 
-const Route        = require('../models/Route');
-const Trayecto     = require('../models/Trayecto');
+const Route = require('../models/Route');
+const Trayecto = require('../models/Trayecto');
 const BitacoraRuta = require('../models/RouteLog');
 const RecorridoReal = require('../models/RecorridoReal'); // 🆕
 
@@ -14,8 +14,8 @@ const normalizeRouteStatus = (routeDoc) => {
     const route = routeDoc.toObject ? routeDoc.toObject() : routeDoc;
     return {
         ...route,
-        vehicle:  route.vehicle  || null,
-        driver:   route.driver   || null,
+        vehicle: route.vehicle || null,
+        driver: route.driver || null,
         trayecto: route.trayecto || null
     };
 };
@@ -68,25 +68,27 @@ exports.createRoute = async (req, res) => {
         let newTrayecto = null;
 
         if (trayecto?.origin && trayecto?.destination) {
+            console.log('📥 trayecto.distancia_metros:', req.body.trayecto?.distancia_metros);
+            console.log('📥 trayecto.encodedPolyline:', String(req.body.trayecto?.encodedPolyline).slice(0, 50));
             newTrayecto = await Trayecto.create({
-                tenantId:                 req.user.tenantId,
-                origin:                   trayecto.origin,
-                destination:              trayecto.destination,
-                waypoints:                trayecto.waypoints || [],
-                encodedPolyline:          trayecto.encodedPolyline,
-                distancia_metros:         trayecto.distancia_metros,
+                tenantId: req.user.tenantId,
+                origin: trayecto.origin,
+                destination: trayecto.destination,
+                waypoints: trayecto.waypoints || [],
+                encodedPolyline: trayecto.encodedPolyline,
+                distancia_metros: trayecto.distancia_metros,
                 tiempo_estimado_segundos: trayecto.tiempo_estimado_segundos
             });
         }
 
         const newRoute = await Route.create({
-            tenantId:   req.user.tenantId,
-            name:       name || 'Ruta sin nombre',
-            color:      color || '#2196F3',
-            vehicle:    vehicle || null,
-            driver:     driver || null,
+            tenantId: req.user.tenantId,
+            name: name || 'Ruta sin nombre',
+            color: color || '#2196F3',
+            vehicle: vehicle || null,
+            driver: driver || null,
             accessCode: generate6DigitCode(),
-            trayecto:   newTrayecto ? newTrayecto._id : null
+            trayecto: newTrayecto ? newTrayecto._id : null
         });
 
         const populatedRoute = await Route.findById(newRoute._id)
@@ -110,7 +112,7 @@ exports.createRoute = async (req, res) => {
 exports.updateRoute = async (req, res) => {
     try {
         const { id: routeId } = req.params;
-        const { tenantId }    = req.user;
+        const { tenantId } = req.user;
 
         const currentRoute = await Route.findOne({ _id: routeId, tenantId });
         if (!currentRoute) return res.status(404).json({ error: 'Ruta no encontrada' });
@@ -179,7 +181,7 @@ exports.updateRouteStatus = async (req, res) => {
                 io.emit('routeFinalized', {
                     routeId: req.params.id,
                     message: 'La ruta ha sido finalizada por el administrador',
-                    route:   normalized
+                    route: normalized
                 });
             }
         }
@@ -266,7 +268,7 @@ exports.startRoute = async (req, res) => {
                 .populate('vehicle').populate('driver').populate('trayecto');
             io.emit('routeStatusChanged', {
                 action: 'started',
-                route:  normalizeRouteStatus(populatedRoute)
+                route: normalizeRouteStatus(populatedRoute)
             });
         }
 
@@ -287,13 +289,13 @@ async function _cerrarRecorrido(routeId) {
         const pts = recorrido.posiciones;
         for (let i = 1; i < pts.length; i++) {
             const R = 6371000;
-            const dLat = (pts[i].lat - pts[i-1].lat) * Math.PI / 180;
-            const dLng = (pts[i].lng - pts[i-1].lng) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 +
-                      Math.cos(pts[i-1].lat * Math.PI/180) *
-                      Math.cos(pts[i].lat   * Math.PI/180) *
-                      Math.sin(dLng/2)**2;
-            distanciaTotal += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const dLat = (pts[i].lat - pts[i - 1].lat) * Math.PI / 180;
+            const dLng = (pts[i].lng - pts[i - 1].lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(pts[i - 1].lat * Math.PI / 180) *
+                Math.cos(pts[i].lat * Math.PI / 180) *
+                Math.sin(dLng / 2) ** 2;
+            distanciaTotal += R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
         await RecorridoReal.updateOne(
