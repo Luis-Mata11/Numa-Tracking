@@ -93,10 +93,10 @@ export function initOrResizeDrawMap() {
 
     if (!mapDraw || !mapDivStillInDOM) {
         console.log("🗺️ mapDraw creado/recreado porque el DOM cambió.");
-        
+
         // Inicializamos los servicios
         directionsService = new window.google.maps.DirectionsService();
-        
+
         // Recreamos el mapa amarrado al NUEVO elemento del DOM
         mapDraw = new window.google.maps.Map(mapEl, {
             center: baseOperativaCoords,
@@ -106,7 +106,7 @@ export function initOrResizeDrawMap() {
 
         // Volvemos a escuchar los clics
         mapDraw.addListener('click', (e) => handleMapClick(e.latLng));
-        
+
         // Reinicializamos el buscador de direcciones
         initAutocomplete();
     } else {
@@ -305,7 +305,7 @@ function renderAllRoutes(result, selectedIndex) {
         // Al hacer clic en una alterna, pasa a ser la seleccionada
         polyline.addListener('click', () => {
             console.log(`🔄 Ruta alterna ${idx} seleccionada.`);
-            renderAllRoutes(result, idx);
+            renderAllRoutes(result, idx);  // ← result aquí es el del closure externo
         });
 
         alternativePolylines.push(polyline);
@@ -345,8 +345,8 @@ function updateRouteMetricsAndData(directionsResult, routeIndex) {
         totalDurationSeconds += leg.duration.value;
     });
 
-    const distanceKm   = (totalDistanceMeters / 1000).toFixed(1);
-    const durationMin  = Math.round(totalDurationSeconds / 60);
+    const distanceKm = (totalDistanceMeters / 1000).toFixed(1);
+    const durationMin = Math.round(totalDurationSeconds / 60);
 
     const elDistance = document.getElementById('create-distance');
     const elDuration = document.getElementById('create-duration');
@@ -369,7 +369,7 @@ function updateRouteMetricsAndData(directionsResult, routeIndex) {
             lng: w.location.lng(),
             stopover: true
         })),
-        encodedPolyline: route.overview_polyline,
+        encodedPolyline: route.overview_polyline?.points || route.overview_polyline,
         distancia_metros: totalDistanceMeters,
         tiempo_estimado_segundos: totalDurationSeconds
     };
@@ -457,9 +457,9 @@ export function drawRouteOnDetailMap(route) {
 
                 const leg = response.routes[0].legs[0];
                 const spanDist = document.getElementById('route-detail-distance');
-                const spanDur  = document.getElementById('route-detail-duration');
+                const spanDur = document.getElementById('route-detail-duration');
                 if (spanDist) spanDist.textContent = leg.distance.text;
-                if (spanDur)  spanDur.textContent  = leg.duration.text;
+                if (spanDur) spanDur.textContent = leg.duration.text;
 
                 console.log("✅ Trayecto dibujado en el mapa de detalles.");
             } else {
