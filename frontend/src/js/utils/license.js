@@ -73,7 +73,7 @@ function _buildModal(licenseKey = '—') {
                 </button>
             </div>
 
-            <div class="plans-grid">
+            <div class="plans-container">
 
                 <div class="plan-card disabled">
                     <div class="plan-info">
