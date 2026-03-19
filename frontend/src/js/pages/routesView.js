@@ -366,21 +366,26 @@ async function handleFormSubmit(e) {
     e.preventDefault();
     const form = e.target;
 
-    // 🔥 EL CAMBIO CLAVE: Pedimos la data estructurada al mapa
     const trayectoData = getRouteDataForDB();
 
     if (!trayectoData) {
-
         showNotification('Debes trazar una ruta completa en el mapa (Inicio y Fin) antes de guardar', 'warning', '#form-new-route');
         return;
     }
 
+    // DIAGNÓSTICO TEMPORAL
+    console.log('📤 Trayecto a guardar:', {
+        distancia: trayectoData?.distancia_metros,
+        polyline: typeof trayectoData?.encodedPolyline === 'string'
+            ? trayectoData.encodedPolyline.slice(0, 40)
+            : JSON.stringify(trayectoData?.encodedPolyline)?.slice(0, 40)
+    });
+
     const routeData = {
-        name: document.getElementById('route-name')?.value || 'Sin nombre',
-        color: document.getElementById('route-color')?.value || '#2196F3',
+        name:    document.getElementById('route-name')?.value  || 'Sin nombre',
+        color:   document.getElementById('route-color')?.value || '#2196F3',
         vehicle: document.getElementById('route-vehicle')?.value || null,
-        driver: document.getElementById('route-driver')?.value || null,
-        // Mandamos todo el objeto Trayecto anidado
+        driver:  document.getElementById('route-driver')?.value  || null,
         trayecto: trayectoData
     };
 
@@ -388,16 +393,13 @@ async function handleFormSubmit(e) {
 
     try {
         await saveRoute(routeData, editingId);
-
         form.reset();
         delete form.dataset.editingId;
         document.getElementById('new-route-panel').classList.remove('open');
-
         const rutasActualizadas = await fetchRoutes();
         setRoutes(rutasActualizadas);
         renderRoutes(rutasActualizadas);
         showNotification('¡Ruta guardada exitosamente!', 'success');
-
     } catch (error) {
         console.error("Error al guardar:", error);
         showNotification('Error al guardar la ruta', 'error');
