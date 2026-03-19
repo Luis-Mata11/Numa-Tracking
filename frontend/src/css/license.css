@@ -1,36 +1,8 @@
 /* src/css/license.css */
 
-/* ─── Overlay ───────────────────────────────────────────────────────────────── */
-.license-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 36, .55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999; /* Por encima de todo */
-    backdrop-filter: blur(6px);
-    animation: overlayFadeIn .3s ease;
-    padding: 20px; /* Margen de seguridad para pantallas pequeñas */
-}
-
 @keyframes overlayFadeIn {
     from { opacity: 0; }
     to   { opacity: 1; }
-}
-
-/* ─── Modal (Ahora Horizontal) ──────────────────────────────────────────────── */
-.license-modal {
-    width: 900px; /* Más ancho para acomodar dos columnas */
-    max-width: 100%;
-    background: var(--surface, #fff);
-    border-radius: var(--radius-lg, 18px);
-    box-shadow: var(--shadow, 0 20px 60px rgba(12, 20, 33, 0.18));
-    overflow: hidden;
-    animation: modalIn .35s cubic-bezier(.2, .9, .3, 1);
-    display: flex; /* Flexbox para colocar Header y Planes uno al lado del otro */
-    flex-direction: row; 
-    position: relative;
 }
 
 @keyframes modalIn {
@@ -38,16 +10,31 @@
     to   { transform: translateY(0)    scale(1);   opacity: 1; }
 }
 
-/* ─── Header (Columna Izquierda) ────────────────────────────────────────────── */
-.license-header {
-    flex: 0 0 320px; /* Ancho fijo para la columna izquierda */
-    padding: 40px 30px;
-    border-right: 1px solid #edf2f7; /* Separador vertical */
-    border-bottom: none; /* Quitamos el borde inferior que tenía antes */
-    background: linear-gradient(135deg, #fff 0%, #f8faff 100%);
+.license-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 36, .55);
     display: flex;
-    flex-direction: column;
-    justify-content: center; /* Centrar el contenido verticalmente */
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(6px);
+    animation: overlayFadeIn .3s ease;
+}
+
+.license-modal {
+    width: 780px;
+    max-width: 96vw;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(12, 20, 33, 0.18);
+    overflow: hidden;
+    animation: modalIn .35s cubic-bezier(.2, .9, .3, 1);
+}
+
+.license-header {
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid #edf2f7;
 }
 
 .license-header .alert-badge {
@@ -56,62 +43,189 @@
     gap: 6px;
     background: #fff5f5;
     color: #e03131;
-    padding: 5px 14px;
+    padding: 4px 12px;
     border-radius: 99px;
     font-size: 12px;
     font-weight: 700;
     border: 1px solid #ffe3e3;
-    margin-bottom: 16px;
-    width: max-content; /* Para que no ocupe todo el ancho */
+    margin-bottom: 10px;
 }
 
 .license-header h2 {
-    margin: 0 0 10px;
-    font-size: 22px;
+    margin: 0 0 4px;
+    font-size: 18px;
     font-weight: 800;
-    color: var(--text, #0f1724);
-    line-height: 1.2;
+    color: #0f1724;
 }
 
 .license-header p {
-    margin: 0 0 20px;
-    font-size: 14px;
-    color: var(--muted, #64748b);
-    line-height: 1.5;
+    margin: 0;
+    font-size: 13px;
+    color: #64748b;
 }
 
 .license-key {
-    display: inline-flex;
-    align-items: center;
-    background: #f1f3f5;
-    padding: 8px 14px;
-    border-radius: 8px;
     font-family: 'Courier New', monospace;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--text, #0f1724);
-    letter-spacing: .5px;
-    margin-bottom: 24px;
+    color: #0f1724;
+    background: #f1f3f5;
+    padding: 2px 8px;
+    border-radius: 6px;
+}
+
+/* ─── Plans grid — 3 columnas lado a lado ───────────────────────────────────── */
+.plans-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.plan-card {
+    padding: 22px 20px;
+    border-right: 1px solid #edf2f7;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.plan-card:last-child { border-right: none; }
+
+.plan-card.featured {
+    border: 2px solid #6c8cff;
+    border-radius: 0;
+    background: #f9faff;
+}
+
+.plan-card.disabled {
+    opacity: .5;
+    pointer-events: none;
+}
+
+.featured-badge {
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #6c8cff;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 0 0 8px 8px;
+    white-space: nowrap;
+}
+
+.soon-badge {
+    display: inline-block;
+    background: #f1f3f5;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-bottom: 6px;
     width: max-content;
 }
 
-/* ─── Logout button ─────────────────────────────────────────────────────────── */
+.plan-name {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #0f1724;
+}
+
+.plan-price {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f1724;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.plan-price small {
+    font-size: 13px;
+    font-weight: 400;
+    color: #64748b;
+}
+
+.plan-period {
+    font-size: 11px;
+    color: #64748b;
+    margin: 0 0 14px;
+}
+
+.plan-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding-bottom: 18px;
+}
+
+.plan-features li {
+    font-size: 12px;
+    color: #4b5563;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.plan-features li.ok::before { content: '✓'; color: #10b981; font-weight: 700; font-size: 11px; }
+.plan-features li.no::before { content: '✗'; color: #ef4444; font-weight: 700; font-size: 11px; }
+
+.btn-plan {
+    width: 100%;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #f8faff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #0f1724;
+    transition: background .15s;
+    margin-top: auto;
+}
+
+.btn-plan:disabled { opacity: .6; cursor: not-allowed; }
+
+.btn-whatsapp {
+    background: #25D366;
+    color: #fff !important;
+    border: none;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, .25);
+}
+
+.btn-whatsapp:hover { filter: brightness(1.07); }
+
+.license-footer {
+    padding: 14px 28px;
+    border-top: 1px solid #edf2f7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8faff;
+}
+
+.license-footer p { margin: 0; font-size: 12px; color: #64748b; }
+
+.license-footer a { color: #6c8cff; font-weight: 700; text-decoration: none; }
+
 .license-logout-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: auto; /* Empujar hacia abajo si hay espacio extra */
-    padding: 10px 16px;
+    gap: 6px;
+    padding: 6px 12px;
     border-radius: 8px;
     border: 1px solid #e2e8f0;
     background: transparent;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
-    color: var(--muted, #64748b);
+    color: #64748b;
     cursor: pointer;
-    transition: background .2s, color .2s, border-color .2s;
-    width: max-content;
+    transition: background .15s, color .15s, border-color .15s;
 }
 
 .license-logout-btn:hover {
@@ -120,223 +234,11 @@
     border-color: #ffe3e3;
 }
 
-/* ─── Contenedor Derecho (Planes + Footer) ──────────────────────────────────── */
-.license-right-panel {
-    flex: 1; /* Ocupa el espacio restante */
-    display: flex;
-    flex-direction: column;
-}
-
-/* ─── Planes (Columna Derecha) ──────────────────────────────────────────────── */
-.plans-container {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 30px;
-    flex: 1; /* Para que empuje el footer hacia abajo */
-    overflow-y: auto; /* Scroll si los planes son muy altos */
-    max-height: 70vh; /* Prevenir que el modal sea más alto que la pantalla */
-}
-
-/* ─── Card ──────────────────────────────────────────────────────────────────── */
-.plan-card {
-    border: 1px solid rgba(15, 23, 36, .08);
-    border-radius: 14px;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: #fff;
-    transition: border-color .2s, transform .2s, box-shadow .2s;
-    position: relative;
-}
-
-.plan-card:not(.disabled):hover {
-    transform: translateY(-2px);
-    border-color: var(--accent, #6c8cff);
-    box-shadow: 0 8px 20px rgba(108, 140, 255, .12);
-}
-
-.plan-card .plan-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.plan-card h3 {
-    margin: 0 0 2px;
-    font-size: 15px;
-    font-weight: 700;
-}
-
-.plan-card .price {
-    font-size: 20px;
-    font-weight: 800;
-    color: var(--text, #0f1724);
-    line-height: 1;
-    margin-bottom: 4px;
-}
-
-.plan-card .price small {
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--muted, #64748b);
-}
-
-.plan-card .plan-desc {
-    font-size: 12px;
-    color: var(--muted, #64748b);
-    margin: 0;
-}
-
-.plan-card ul {
-    list-style: none;
-    padding: 0;
-    margin: 8px 0 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.plan-card ul li {
-    font-size: 12px;
-    color: #4b5563;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.plan-card ul li::before {
-    content: '✓';
-    color: #10b981;
-    font-weight: 700;
-    font-size: 11px;
-}
-
-/* ─── Featured ──────────────────────────────────────────────────────────────── */
-.plan-card.featured {
-    border: 2px solid var(--accent, #6c8cff);
-    background: linear-gradient(135deg, #f9faff 0%, #f0f4ff 100%);
-    box-shadow: 0 6px 20px rgba(108, 140, 255, .15);
-}
-
-/* ─── Badge ─────────────────────────────────────────────────────────────────── */
-.badge {
-    display: inline-block;
-    background: linear-gradient(90deg, var(--accent, #6c8cff), #8fa8ff);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 6px;
-    letter-spacing: .3px;
-    margin-bottom: 6px;
-    width: max-content;
-}
-
-/* ─── Botones ───────────────────────────────────────────────────────────────── */
-.btn-plan {
-    flex-shrink: 0;
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background .2s, color .2s, border-color .2s;
-    white-space: nowrap;
-    color: var(--text, #0f1724);
-}
-
-.btn-plan.featured-btn {
-    background: linear-gradient(90deg, var(--accent, #6c8cff), #8fa8ff);
-    color: #fff;
-    border: none;
-    box-shadow: 0 4px 12px rgba(108, 140, 255, .35);
-}
-
-.btn-plan.featured-btn:hover {
-    filter: brightness(1.08);
-}
-
-.btn-plan:disabled {
-    opacity: .45;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
-/* ─── Disabled card ─────────────────────────────────────────────────────────── */
-.plan-card.disabled {
-    opacity: .45;
-    pointer-events: none;
-    filter: grayscale(.6);
-}
-
-/* ─── Footer ────────────────────────────────────────────────────────────────── */
-.license-footer {
-    padding: 16px 30px;
-    background: #f8faff;
-    border-top: 1px solid #edf2f7;
-    text-align: right; /* Alineado a la derecha */
-}
-
-.license-footer p {
-    margin: 0;
-    font-size: 13px;
-    color: var(--muted, #64748b);
-}
-
-.license-footer a {
-    color: var(--accent, #6c8cff);
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.license-footer a:hover {
-    text-decoration: underline;
-}
-
-/* ─── WhatsApp cotizar button ───────────────────────────────────────────────── */
-.cotizar-btn {
-    background: #25D366 !important;
-    color: #fff !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(37, 211, 102, .3) !important;
-}
-
-.cotizar-btn:hover {
-    filter: brightness(1.08);
-}
-
-/* ─── Responsive (Vuelve a Vertical en móviles) ─────────────────────────────── */
-@media (max-width: 800px) {
-    .license-modal { 
-        flex-direction: column; 
-        width: 100%;
-        max-width: 520px; /* Limita el ancho en tablet/móvil */
-    }
-    
-    .license-header { 
-        flex: auto;
-        border-right: none;
-        border-bottom: 1px solid #edf2f7;
-        padding: 28px 28px 20px;
-        align-items: flex-start; /* Restaurar alineación a la izquierda */
-    }
-
-    .plans-container {
-        padding: 20px 28px;
-        max-height: none; /* Quitar scroll en móvil, dejar que crezca */
-    }
-    
-    .license-footer {
-        text-align: center;
-    }
-}
-
-@media (max-width: 540px) {
-    .license-modal-overlay { align-items: flex-end; padding: 0; }
-    .license-modal { border-radius: 14px 14px 0 0; max-width: 100%; }
-    .plan-card { flex-direction: column; align-items: flex-start; }
-    .btn-plan { width: 100%; text-align: center; }
+@media (max-width: 640px) {
+    .license-modal { border-radius: 14px 14px 0 0; width: 100%; max-width: 100%; }
+    .license-modal-overlay { align-items: flex-end; }
+    .plans-grid { grid-template-columns: 1fr; }
+    .plan-card { border-right: none; border-bottom: 1px solid #edf2f7; }
+    .plan-card.featured { border: 2px solid #6c8cff; }
+    .license-footer { flex-direction: column; gap: 10px; text-align: center; }
 }
