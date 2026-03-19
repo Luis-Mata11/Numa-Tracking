@@ -382,17 +382,12 @@ function updateRouteMetricsAndData(directionsResult, routeIndex) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function drawRouteOnDetailMap(route) {
-    // Auto-inicialización defensiva del servicio
+    // Auto-inicialización defensiva del servicio (solo para fallback)
     if (!directionsService && window.google && window.google.maps) {
         directionsService = new google.maps.DirectionsService();
     }
-    if (!directionsService) {
-        console.error("❌ directionsService no está listo.");
-        return;
-    }
 
-    // 🔑 FIX: Verificar que mapMain sigue apuntando a un nodo real del DOM.
-    // Si el panel fue destruido y recreado, el nodo anterior ya no existe.
+    // 🔑 Verificar que mapMain sigue apuntando a un nodo real del DOM
     if (!mapMain || !document.body.contains(mapMain.getDiv())) {
         const mapEl = document.getElementById('route-detail-map');
         if (!mapEl) {
@@ -404,7 +399,7 @@ export function drawRouteOnDetailMap(route) {
             zoom: 12,
             disableDefaultUI: false
         });
-        detailDirectionsRenderer = null; // Invalidar renderer anterior
+        detailDirectionsRenderer = null;
         console.log("🗺️ mapMain recreado dentro de drawRouteOnDetailMap.");
     }
 
@@ -414,7 +409,7 @@ export function drawRouteOnDetailMap(route) {
         detailDirectionsRenderer = null;
     }
 
-    // Validar datos de la ruta
+    // Validar datos mínimos
     if (!route?.trayecto?.origin || !route?.trayecto?.destination) {
         const notice = document.getElementById('route-detail-map-notice');
         if (notice) notice.innerHTML = "⚠️ Esta ruta no tiene un trayecto guardado en el mapa.";
@@ -424,8 +419,98 @@ export function drawRouteOnDetailMap(route) {
     const notice = document.getElementById('route-detail-map-notice');
     if (notice) notice.innerHTML = "";
 
+    // ✅ FIX PRINCIPAL: Si hay encodedPolyline guardada, la usamos directamente.
+    // Esto dibuja EXACTAMENTE la ruta que el usuario eligió (incluida la alterna),
+    // sin pedirle a Google que recalcule (que siempre devuelve la óptima primero).
+    if (route.trayecto.encodedPolyline && window.google?.maps?.geometry) {
+        const decodedPath = google.maps.geometry.encoding.decodePath(
+            route.trayecto.encodedPolyline
+        );
+
+        // Polilínea exacta guardada
+        new google.maps.Polyline({
+            path:          decodedPath,
+            map:           mapMain,
+            strokeColor:   route.color || '#1A73E8',
+            strokeOpacity: 0.9,
+            strokeWeight:  6,
+            geodesic:      true
+        });
+
+        // Marcador de inicio
+        new google.maps.Marker({
+            position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
+            map:      mapMain,
+            title:    'Inicio',
+            icon: {
+                path:        google.maps.SymbolPath.CIRCLE,
+                scale:       8,
+                fillColor:   '#4CAF50',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF'
+            }
+        });
+
+        // Marcador de destino
+        new google.maps.Marker({
+            position: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng },
+            map:      mapMain,
+            title:    'Destino',
+            icon: {
+                path:        google.maps.SymbolPath.CIRCLE,
+                scale:       8,
+                fillColor:   '#F44336',
+                fillOpacity: 1,
+                strokeWeight: 2,
+                strokeColor: '#FFFFFF'
+            }
+        });
+
+        // Marcadores de waypoints intermedios
+        (route.trayecto.waypoints || []).forEach((wp, i) => {
+            new google.maps.Marker({
+                position: { lat: wp.lat, lng: wp.lng },
+                map:      mapMain,
+                title:    `Parada ${i + 1}`,
+                icon: {
+                    path:        google.maps.SymbolPath.CIRCLE,
+                    scale:       6,
+                    fillColor:   '#FFC107',
+                    fillOpacity: 1,
+                    strokeWeight: 2,
+                    strokeColor: '#FFFFFF'
+                }
+            });
+        });
+
+        // Ajustar viewport al trayecto completo
+        const bounds = new google.maps.LatLngBounds();
+        decodedPath.forEach(p => bounds.extend(p));
+        mapMain.fitBounds(bounds, 40);
+        window.google.maps.event.trigger(mapMain, 'resize');
+
+        // Métricas desde los datos guardados (sin recalcular)
+        const spanDist = document.getElementById('route-detail-distance');
+        const spanDur  = document.getElementById('route-detail-duration');
+        if (spanDist && route.trayecto.distancia_metros)
+            spanDist.textContent = `${(route.trayecto.distancia_metros / 1000).toFixed(1)} km`;
+        if (spanDur && route.trayecto.tiempo_estimado_segundos)
+            spanDur.textContent = `${Math.round(route.trayecto.tiempo_estimado_segundos / 60)} min`;
+
+        console.log("✅ Trayecto dibujado desde encodedPolyline guardado.");
+        return; // No recalculamos con Google
+    }
+
+    // ── Fallback: sin encodedPolyline → recalcular con Google ────────────────
+    // Esto ocurre solo con rutas antiguas que no tienen polyline guardada.
+    if (!directionsService) {
+        console.error("❌ directionsService no está listo para el fallback.");
+        return;
+    }
+
     detailDirectionsRenderer = new google.maps.DirectionsRenderer({
-        map: mapMain,
+        map:             mapMain,
         suppressMarkers: false
     });
 
@@ -435,35 +520,31 @@ export function drawRouteOnDetailMap(route) {
     }));
 
     const request = {
-        origin: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
+        origin:      { lat: route.trayecto.origin.lat,      lng: route.trayecto.origin.lng },
         destination: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng },
-        waypoints: formattedWaypoints,
-        travelMode: google.maps.TravelMode.DRIVING
+        waypoints:   formattedWaypoints,
+        travelMode:  google.maps.TravelMode.DRIVING
     };
 
     directionsService.route(request, (response, status) => {
         if (status === 'OK') {
-            // Re-verificar que el renderer sigue apuntando al mapa correcto
-            // (el usuario puede haber cerrado el panel mientras calculaba)
             if (detailDirectionsRenderer && mapMain && document.body.contains(mapMain.getDiv())) {
                 detailDirectionsRenderer.setDirections(response);
-
-                // Forzar resize por si el contenedor cambió de tamaño al abrirse
                 window.google.maps.event.trigger(mapMain, 'resize');
                 mapMain.setCenter({
                     lat: route.trayecto.origin.lat,
                     lng: route.trayecto.origin.lng
                 });
 
-                const leg = response.routes[0].legs[0];
+                const leg      = response.routes[0].legs[0];
                 const spanDist = document.getElementById('route-detail-distance');
-                const spanDur = document.getElementById('route-detail-duration');
+                const spanDur  = document.getElementById('route-detail-duration');
                 if (spanDist) spanDist.textContent = leg.distance.text;
-                if (spanDur) spanDur.textContent = leg.duration.text;
+                if (spanDur)  spanDur.textContent  = leg.duration.text;
 
-                console.log("✅ Trayecto dibujado en el mapa de detalles.");
+                console.log("✅ Trayecto dibujado (fallback Google Directions).");
             } else {
-                console.warn("⚠️ El panel de detalles fue cerrado antes de que la ruta llegara.");
+                console.warn("⚠️ El panel fue cerrado antes de que la ruta llegara.");
             }
         } else {
             console.error("❌ Error al trazar la ruta en detalles:", status);
