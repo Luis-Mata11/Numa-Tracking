@@ -2,7 +2,7 @@
     const socket = io();
 
     // --- Constantes ---
-    const DEVIATION_TOLERANCE = 25;
+    const DEVIATION_TOLERANCE = 80;
     const MOVEMENT_THRESHOLD  = 10;
 
     // --- Referencias al DOM ---

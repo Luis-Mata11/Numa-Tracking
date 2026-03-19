@@ -2,7 +2,7 @@
     const socket = io();
 
     // --- Constantes ---
-    const DEVIATION_TOLERANCE = 25; // metros
+    const DEVIATION_TOLERANCE = 80; // metros
     const MOVEMENT_THRESHOLD  = 10; // metros mínimos para dibujar segmento
 
     // --- Referencias al DOM ---

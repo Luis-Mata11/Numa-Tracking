@@ -4,8 +4,17 @@ const Route        = require('../models/Route');
 const BitacoraRuta = require('../models/RouteLog');
 const RecorridoReal = require('../models/RecorridoReal');
 
-// Distancia mínima en metros entre puntos para guardar (filtro anti-ruido GPS)
-const MIN_DISTANCE_METERS = 15;
+// ─── Configuración ────────────────────────────────────────────────────────────
+// Tolerancia de desvío — 80m para absorber imprecisión GPS + diferencia de trazo
+const DEVIATION_TOLERANCE_METERS = 80;
+
+// Debounce: tiempo mínimo en ms entre registro de un desvío y su reingreso
+// Evita que fluctuaciones GPS de 1-2 segundos generen pares desvío/reingreso
+const DEVIATION_DEBOUNCE_MS = 30000; // 30 segundos
+
+// Seguimiento en memoria del estado de desvío por ruta (evita consultas a BD en cada ping)
+// { [routeId]: { isOffRoute: bool, lastChangeTime: Date, lastDeviationCount: number } }
+const deviationState = {};
 
 // ─── Helper: Haversine ────────────────────────────────────────────────────────
 function calcDistance(lat1, lng1, lat2, lng2) {
@@ -41,7 +50,7 @@ module.exports = (io) => {
         // ── MÓVIL: chofer ingresó al lobby de la ruta ─────────────────────────
         socket.on('mobileConnected', async (payload) => {
             try {
-                const routeId = payload?.routeId;
+                const routeId  = payload?.routeId;
                 const driverId = payload?.driverId;
                 if (!routeId) return;
 
@@ -52,16 +61,27 @@ module.exports = (io) => {
                 io.to(String(routeId)).emit('routeStatusChanged',
                     Object.assign({}, normalized, { estado: 'Lista para iniciar', action: 'ready' })
                 );
-                io.emit('routeReady', { routeId: String(routeId), driverId,
-                    message: 'Ruta marcada como lista para iniciar por el chofer' });
+                io.emit('routeReady', {
+                    routeId:  String(routeId),
+                    driverId,
+                    message:  'Ruta marcada como lista para iniciar por el chofer'
+                });
 
-                // Evento en bitácora — UN solo registro de "chofer conectado"
-                await BitacoraRuta.create({
-                    routeId,
-                    action: 'start',
-                    description: 'Chofer ingresó a la sala de espera de la ruta',
-                    timestamp: new Date()
-                }).catch(e => console.error('[io] bitácora mobileConnected:', e));
+                // FIX: evitar duplicados — solo registrar si el último evento de esta
+                // ruta NO es ya un 'start'
+                const ultimoBitacora = await BitacoraRuta
+                    .findOne({ routeId })
+                    .sort({ timestamp: -1 })
+                    .select('action');
+
+                if (!ultimoBitacora || ultimoBitacora.action !== 'start') {
+                    await BitacoraRuta.create({
+                        routeId,
+                        action:      'start',
+                        description: 'Chofer ingresó a la sala de espera de la ruta',
+                        timestamp:   new Date()
+                    }).catch(e => console.error('[io] bitácora mobileConnected:', e));
+                }
 
             } catch (e) { console.error('[io] mobileConnected:', e); }
         });
@@ -79,8 +99,6 @@ module.exports = (io) => {
         });
 
         // ── GPS: ubicación del chofer ─────────────────────────────────────────
-        // 🔑 CAMBIO CLAVE: Ya NO hace BitacoraRuta.create() en cada ping.
-        //    Hace $push al RecorridoReal del recorrido activo.
         socket.on('driverLocation', async (payload) => {
             try {
                 if (!payload?.routeId) return;
@@ -92,10 +110,10 @@ module.exports = (io) => {
                 const routeIdStr = String(payload.routeId);
                 const driverId   = payload.driverId || null;
 
-                // 1. Reenviar al dashboard en tiempo real (sin tocar BD todavía)
+                // 1. Reenviar al dashboard en tiempo real
                 io.to(routeIdStr).emit('locationUpdate', payload);
 
-                // 2. Emitir alerta de desvío si corresponde
+                // 2. Alerta de desvío en tiempo real (sin filtro — el dashboard la necesita)
                 if (payload.isOffRoute) {
                     io.emit('routeDeviationAlert', {
                         routeId:   payload.routeId,
@@ -106,7 +124,7 @@ module.exports = (io) => {
                     });
                 }
 
-                // 3. Convertir routeId a ObjectId — evita mismatch de tipos en la búsqueda
+                // 3. Convertir routeId a ObjectId
                 let routeObjectId;
                 try {
                     routeObjectId = new mongoose.Types.ObjectId(String(payload.routeId));
@@ -115,7 +133,7 @@ module.exports = (io) => {
                     return;
                 }
 
-                // 4. Buscar o crear el RecorridoReal activo de esta ruta
+                // 4. Buscar o crear RecorridoReal activo
                 let recorrido = await RecorridoReal.findOne({
                     routeId: routeObjectId,
                     status:  'activo'
@@ -124,23 +142,22 @@ module.exports = (io) => {
                 if (!recorrido) {
                     recorrido = await RecorridoReal.create({
                         routeId:    routeObjectId,
-                        driverId:   driverId,
+                        driverId,
                         status:     'activo',
                         posiciones: []
                     });
                     console.log(`🗺️  RecorridoReal creado para ruta ${payload.routeId}`);
                 }
 
-                // 5. Filtro anti-ruido: descartar solo si la coordenada es IDÉNTICA
-                //    (15m era demasiado agresivo — descartaba puntos reales en pruebas)
+                // 5. Filtro anti-ruido: descartar coordenada idéntica
                 const ultima = recorrido.posiciones[recorrido.posiciones.length - 1];
                 if (ultima) {
                     const mismaLat = Math.abs(ultima.lat - parseFloat(lat)) < 0.000001;
                     const mismaLng = Math.abs(ultima.lng - parseFloat(lng)) < 0.000001;
-                    if (mismaLat && mismaLng) return; // Coordenada exactamente igual — descartada
+                    if (mismaLat && mismaLng) return;
                 }
 
-                // 6. $push — agrega la posición al arreglo SIN crear documento nuevo
+                // 6. $push posición (sin incrementar desviaciones por punto — se hace por incidente)
                 await RecorridoReal.updateOne(
                     { _id: recorrido._id },
                     {
@@ -154,48 +171,67 @@ module.exports = (io) => {
                                 isOffRoute: payload.isOffRoute || false,
                                 timestamp:  payload.timestamp ? new Date(payload.timestamp) : new Date()
                             }
-                        },
-                        ...(payload.isOffRoute ? { $inc: { desviaciones: 1 } } : {})
+                        }
                     }
                 );
 
-                // 7. Registrar evento de DESVÍO en BitacoraRuta (solo 1 por incidente)
-                if (payload.isOffRoute) {
-                    const ultimoEvento = await BitacoraRuta
-                        .findOne({ routeId: routeObjectId })
-                        .sort({ timestamp: -1 })
-                        .select('action');
+                // ── 7. LÓGICA DE DESVÍOS CON DEBOUNCE ────────────────────────
+                // Usamos estado en memoria para no consultar BD en cada ping GPS
+                const state = deviationState[routeIdStr] || {
+                    isOffRoute:      false,
+                    lastChangeTime:  0,
+                    incidentCount:   0
+                };
 
-                    if (!ultimoEvento || ultimoEvento.action !== 'desvio') {
-                        await BitacoraRuta.create({
-                            routeId:     routeObjectId,
-                            action:      'desvio',
-                            description: 'Chofer fuera del trayecto planeado',
-                            location:    { lat: parseFloat(lat), lng: parseFloat(lng) },
-                            timestamp:   new Date()
-                        }).catch(e => console.error('[io] bitácora desvío:', e));
-                    }
-                } else {
-                    const ultimoEvento = await BitacoraRuta
-                        .findOne({ routeId: routeObjectId })
-                        .sort({ timestamp: -1 })
-                        .select('action');
+                const ahora        = Date.now();
+                const isOffNow     = payload.isOffRoute || false;
+                const tiempoDesde  = ahora - state.lastChangeTime;
 
-                    if (ultimoEvento?.action === 'desvio') {
-                        await BitacoraRuta.create({
-                            routeId:     routeObjectId,
-                            action:      'reingreso',
-                            description: 'Chofer regresó al trayecto',
-                            location:    { lat: parseFloat(lat), lng: parseFloat(lng) },
-                            timestamp:   new Date()
-                        }).catch(e => console.error('[io] bitácora reingreso:', e));
-                    }
+                if (isOffNow && !state.isOffRoute && tiempoDesde > DEVIATION_DEBOUNCE_MS) {
+                    // 🔴 NUEVO DESVÍO — chofer salió del trayecto y han pasado >30s desde el último
+                    state.isOffRoute     = true;
+                    state.lastChangeTime = ahora;
+                    state.incidentCount  = (state.incidentCount || 0) + 1;
+
+                    // Incrementar contador de incidentes en BD (1 por incidente, no por punto)
+                    await RecorridoReal.updateOne(
+                        { _id: recorrido._id },
+                        { $inc: { desviaciones: 1 } }
+                    );
+
+                    await BitacoraRuta.create({
+                        routeId:     routeObjectId,
+                        action:      'desvio',
+                        description: 'Chofer fuera del trayecto planeado',
+                        location:    { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        timestamp:   new Date()
+                    }).catch(e => console.error('[io] bitácora desvío:', e));
+
+                    console.log(`⚠️  Desvío #${state.incidentCount} registrado en ruta ${routeIdStr}`);
+
+                } else if (!isOffNow && state.isOffRoute && tiempoDesde > DEVIATION_DEBOUNCE_MS) {
+                    // ✅ REINGRESO — chofer volvió al trayecto y han pasado >30s
+                    state.isOffRoute     = false;
+                    state.lastChangeTime = ahora;
+
+                    await BitacoraRuta.create({
+                        routeId:     routeObjectId,
+                        action:      'reingreso',
+                        description: 'Chofer regresó al trayecto',
+                        location:    { lat: parseFloat(lat), lng: parseFloat(lng) },
+                        timestamp:   new Date()
+                    }).catch(e => console.error('[io] bitácora reingreso:', e));
+
+                    console.log(`✅  Reingreso registrado en ruta ${routeIdStr}`);
                 }
+
+                // Persistir estado en memoria
+                deviationState[routeIdStr] = state;
 
             } catch (e) { console.error('[io] driverLocation:', e); }
         });
 
-        // ── SOLICITUD DE FINALIZACIÓN (chofer pide al admin) ─────────────────
+        // ── SOLICITUD DE FINALIZACIÓN (chofer → admin) ────────────────────────
         socket.on('requestFinishRoute', (data) => {
             try {
                 (async () => {
@@ -243,24 +279,20 @@ module.exports = (io) => {
 
                     if (updated) {
                         const normalized = normalizeRouteStatus(updated);
-                        io.emit('routeFinalized',    { routeId, message: 'Ruta finalizada', route: normalized });
-                        io.emit('routeStatusChanged', { action: 'status', route: normalized });
+                        io.emit('routeFinalized',     { routeId, message: 'Ruta finalizada', route: normalized });
+                        io.emit('routeStatusChanged',  { action: 'status', route: normalized });
 
-                        // Cerrar RecorridoReal activo y calcular distancia total
                         await _cerrarRecorrido(routeId);
 
-                        // Evento en bitácora
-                        const driverIdValue = updated.driver
-                            ? String(updated.driver._id || updated.driver)
-                            : null;
-                        if (driverIdValue) {
-                            await BitacoraRuta.create({
-                                routeId,
-                                action:      'complete',
-                                description: 'Administrador aprobó la finalización de la ruta',
-                                timestamp:   new Date()
-                            }).catch(e => console.error('[io] bitácora finalizacion_aprobada:', e));
-                        }S
+                        // Limpiar estado de desvío en memoria al finalizar
+                        delete deviationState[String(routeId)];
+
+                        await BitacoraRuta.create({
+                            routeId,
+                            action:      'complete',
+                            description: 'Administrador aprobó la finalización de la ruta',
+                            timestamp:   new Date()
+                        }).catch(e => console.error('[io] bitácora finalizacion_aprobada:', e));
                     }
                 } else {
                     io.emit('finishRouteRejected', { routeId, message: 'Solicitud rechazada' });
@@ -280,7 +312,7 @@ module.exports = (io) => {
     });
 };
 
-// ─── Función interna: cierra el RecorridoReal y calcula distancia total ───────
+// ─── Cierra RecorridoReal y calcula distancia total ───────────────────────────
 async function _cerrarRecorrido(routeId) {
     try {
         const recorrido = await RecorridoReal.findOne({ routeId, status: 'activo' });
@@ -289,12 +321,21 @@ async function _cerrarRecorrido(routeId) {
         let distanciaTotal = 0;
         const pts = recorrido.posiciones;
         for (let i = 1; i < pts.length; i++) {
-            distanciaTotal += calcDistance(pts[i-1].lat, pts[i-1].lng, pts[i].lat, pts[i].lng);
+            distanciaTotal += calcDistance(
+                pts[i-1].lat, pts[i-1].lng,
+                pts[i].lat,   pts[i].lng
+            );
         }
 
         await RecorridoReal.updateOne(
             { _id: recorrido._id },
-            { $set: { status: 'completado', endTime: new Date(), distanciaMetros: Math.round(distanciaTotal) } }
+            {
+                $set: {
+                    status:          'completado',
+                    endTime:         new Date(),
+                    distanciaMetros: Math.round(distanciaTotal)
+                }
+            }
         );
         console.log(`🏁 RecorridoReal cerrado para ruta ${routeId} — ${Math.round(distanciaTotal)}m`);
     } catch (e) {
