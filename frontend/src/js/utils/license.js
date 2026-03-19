@@ -79,8 +79,13 @@ function _buildModal(licenseKey = '—') {
                     <div class="plan-info">
                         <h3>Trial</h3>
                         <div class="price">$0 <small>MXN</small></div>
-                        <p class="plan-desc">15 días de acceso básico.</p>
-                        <ul><li>Acceso básico</li><li>Sin soporte prioritario</li></ul>
+                        <p class="plan-desc">15 días de prueba gratis.</p>
+                        <ul>
+                            <li>3 vehículos incluidos</li>
+                            <li>Rastreo en tiempo real (App móvil)</li>
+                            <li>Reportes y planeación de rutas</li>
+                            <li>Registro de choferes y bases</li>
+                        </ul>
                     </div>
                     <button class="btn-plan" disabled>Finalizado</button>
                 </div>
@@ -89,27 +94,33 @@ function _buildModal(licenseKey = '—') {
                     <div class="plan-info">
                         <span class="badge">Recomendado</span>
                         <h3>Plan Pro</h3>
-                        <div class="price">$140 <small>/mes</small></div>
-                        <p class="plan-desc">Todo lo que necesitas para operar sin límites.</p>
+                        <div class="price">$199 <small>/mes</small></div>
+                        <p style="font-size: 0.85rem; color: var(--muted); margin-top: -5px; margin-bottom: 10px; font-weight: 500;">o $2,100 / anual</p>
+                        <p class="plan-desc">Soporte prioritario y operaciones sin límites.</p>
                         <ul>
-                            <li>Operaciones ilimitadas</li>
-                            <li>Reportes avanzados</li>
-                            <li>Soporte 24/7</li>
+                            <li>5 vehículos incluidos</li>
+                            <li>Rastreo en tiempo real (App móvil)</li>
+                            <li>Reportes, rutas, choferes y bases</li>
+                            <li><strong>+ Extra:</strong> $89/mes por vehículo adicional ($1,000/anual)</li>
                         </ul>
                     </div>
-                    <button class="btn-plan select-plan featured-btn"><i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp</button>
+                    <button class="btn-plan select-plan featured-btn">
+                        <i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp
+                    </button>
                 </div>
 
                 <div class="plan-card disabled">
                     <div class="plan-info">
                         <span class="badge" style="background:#64748b;">Próximamente</span>
                         <h3>Corporativo</h3>
-                        <div class="price" style="font-size:18px;">Cotizar</div>
-                        <p class="plan-desc">Solución a medida para flotas grandes.</p>
+                        <div class="price">$399 <small>/mes</small></div>
+                        <p style="font-size: 0.85rem; color: var(--muted); margin-top: -5px; margin-bottom: 10px; font-weight: 500;">o $4,600 / anual</p>
+                        <p class="plan-desc">Métricas a medida para flotas grandes.</p>
                         <ul>
-                            <li>Todo lo del Plan Pro</li>
-                            <li>GPS individual</li>
-                            <li>Gestión de flotas</li>
+                            <li>8 vehículos incluidos</li>
+                            <li>Rastreo vinculación GPS + App</li>
+                            <li>Reportes avanzados (gasolina, KM, alertas, velocidad)</li>
+                            <li><strong>+ Extra:</strong> $89/mes por vehículo adicional</li>
                         </ul>
                     </div>
                     <button class="btn-plan" disabled>No disponible</button>
