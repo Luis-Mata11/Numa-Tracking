@@ -11,6 +11,7 @@
     z-index: 9999; /* Por encima de todo */
     backdrop-filter: blur(6px);
     animation: overlayFadeIn .3s ease;
+    padding: 20px; /* Margen de seguridad para pantallas pequeñas */
 }
 
 @keyframes overlayFadeIn {
@@ -18,15 +19,18 @@
     to   { opacity: 1; }
 }
 
-/* ─── Modal ─────────────────────────────────────────────────────────────────── */
+/* ─── Modal (Ahora Horizontal) ──────────────────────────────────────────────── */
 .license-modal {
-    width: 520px;
-    max-width: 95vw;
+    width: 900px; /* Más ancho para acomodar dos columnas */
+    max-width: 100%;
     background: var(--surface, #fff);
     border-radius: var(--radius-lg, 18px);
     box-shadow: var(--shadow, 0 20px 60px rgba(12, 20, 33, 0.18));
     overflow: hidden;
     animation: modalIn .35s cubic-bezier(.2, .9, .3, 1);
+    display: flex; /* Flexbox para colocar Header y Planes uno al lado del otro */
+    flex-direction: row; 
+    position: relative;
 }
 
 @keyframes modalIn {
@@ -34,11 +38,16 @@
     to   { transform: translateY(0)    scale(1);   opacity: 1; }
 }
 
-/* ─── Header ────────────────────────────────────────────────────────────────── */
+/* ─── Header (Columna Izquierda) ────────────────────────────────────────────── */
 .license-header {
-    padding: 28px 28px 20px;
-    border-bottom: 1px solid #edf2f7;
+    flex: 0 0 320px; /* Ancho fijo para la columna izquierda */
+    padding: 40px 30px;
+    border-right: 1px solid #edf2f7; /* Separador vertical */
+    border-bottom: none; /* Quitamos el borde inferior que tenía antes */
     background: linear-gradient(135deg, #fff 0%, #f8faff 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centrar el contenido verticalmente */
 }
 
 .license-header .alert-badge {
@@ -52,48 +61,88 @@
     font-size: 12px;
     font-weight: 700;
     border: 1px solid #ffe3e3;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    width: max-content; /* Para que no ocupe todo el ancho */
 }
 
 .license-header h2 {
-    margin: 0 0 6px;
-    font-size: 20px;
+    margin: 0 0 10px;
+    font-size: 22px;
     font-weight: 800;
     color: var(--text, #0f1724);
+    line-height: 1.2;
 }
 
 .license-header p {
-    margin: 0 0 14px;
+    margin: 0 0 20px;
     font-size: 14px;
     color: var(--muted, #64748b);
+    line-height: 1.5;
 }
 
 .license-key {
     display: inline-flex;
     align-items: center;
     background: #f1f3f5;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-radius: 8px;
     font-family: 'Courier New', monospace;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text, #0f1724);
     letter-spacing: .5px;
+    margin-bottom: 24px;
+    width: max-content;
 }
 
-/* ─── Planes ────────────────────────────────────────────────────────────────── */
+/* ─── Logout button ─────────────────────────────────────────────────────────── */
+.license-logout-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: auto; /* Empujar hacia abajo si hay espacio extra */
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted, #64748b);
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s;
+    width: max-content;
+}
+
+.license-logout-btn:hover {
+    background: #fff5f5;
+    color: #e03131;
+    border-color: #ffe3e3;
+}
+
+/* ─── Contenedor Derecho (Planes + Footer) ──────────────────────────────────── */
+.license-right-panel {
+    flex: 1; /* Ocupa el espacio restante */
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── Planes (Columna Derecha) ──────────────────────────────────────────────── */
 .plans-container {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    padding: 20px 28px;
+    padding: 30px;
+    flex: 1; /* Para que empuje el footer hacia abajo */
+    overflow-y: auto; /* Scroll si los planes son muy altos */
+    max-height: 70vh; /* Prevenir que el modal sea más alto que la pantalla */
 }
 
 /* ─── Card ──────────────────────────────────────────────────────────────────── */
 .plan-card {
     border: 1px solid rgba(15, 23, 36, .08);
     border-radius: 14px;
-    padding: 18px 20px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     gap: 16px;
@@ -225,10 +274,10 @@
 
 /* ─── Footer ────────────────────────────────────────────────────────────────── */
 .license-footer {
-    padding: 16px 28px;
+    padding: 16px 30px;
     background: #f8faff;
     border-top: 1px solid #edf2f7;
-    text-align: center;
+    text-align: right; /* Alineado a la derecha */
 }
 
 .license-footer p {
@@ -247,37 +296,6 @@
     text-decoration: underline;
 }
 
-/* ─── Responsive ────────────────────────────────────────────────────────────── */
-@media (max-width: 540px) {
-    .license-modal { border-radius: 14px 14px 0 0; align-self: flex-end; width: 100%; }
-    .license-modal-overlay { align-items: flex-end; }
-    .plan-card { flex-direction: column; align-items: flex-start; }
-    .btn-plan { width: 100%; text-align: center; }
-}
-
-/* ─── Logout button ─────────────────────────────────────────────────────────── */
-.license-logout-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 14px;
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    background: transparent;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted, #64748b);
-    cursor: pointer;
-    transition: background .2s, color .2s, border-color .2s;
-}
-
-.license-logout-btn:hover {
-    background: #fff5f5;
-    color: #e03131;
-    border-color: #ffe3e3;
-}
-
 /* ─── WhatsApp cotizar button ───────────────────────────────────────────────── */
 .cotizar-btn {
     background: #25D366 !important;
@@ -288,4 +306,37 @@
 
 .cotizar-btn:hover {
     filter: brightness(1.08);
+}
+
+/* ─── Responsive (Vuelve a Vertical en móviles) ─────────────────────────────── */
+@media (max-width: 800px) {
+    .license-modal { 
+        flex-direction: column; 
+        width: 100%;
+        max-width: 520px; /* Limita el ancho en tablet/móvil */
+    }
+    
+    .license-header { 
+        flex: auto;
+        border-right: none;
+        border-bottom: 1px solid #edf2f7;
+        padding: 28px 28px 20px;
+        align-items: flex-start; /* Restaurar alineación a la izquierda */
+    }
+
+    .plans-container {
+        padding: 20px 28px;
+        max-height: none; /* Quitar scroll en móvil, dejar que crezca */
+    }
+    
+    .license-footer {
+        text-align: center;
+    }
+}
+
+@media (max-width: 540px) {
+    .license-modal-overlay { align-items: flex-end; padding: 0; }
+    .license-modal { border-radius: 14px 14px 0 0; max-width: 100%; }
+    .plan-card { flex-direction: column; align-items: flex-start; }
+    .btn-plan { width: 100%; text-align: center; }
 }
