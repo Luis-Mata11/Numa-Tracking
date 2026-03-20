@@ -1,22 +1,39 @@
-// 👇 IMPORTANTE: Usamos llaves { } porque en api.js usamos "export const"
-import { api } from '../services/api.js'; 
+// src/js/modules/auth/login.js
+import { api } from '../services/api.js';
+import { showLoader, hideLoader } from '../utils/loader.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Login Module Loaded');
 
-  const token = sessionStorage.getItem('numa_token');
+    const token = sessionStorage.getItem('numa_token');
     if (token) {
-        // Si hay token de sesión, redirigimos
         window.location.href = 'index.html';
         return;
     }
-    const form = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const loginButton = document.getElementById('btn-login');
-    const errorMsg = document.getElementById('error-msg');
 
-    // UI Helpers
+    const form          = document.getElementById('login-form');
+    const emailInput    = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginButton   = document.getElementById('btn-login');
+    const errorMsg      = document.getElementById('error-msg');
+    const togglePw      = document.getElementById('toggle-pw');
+
+    // ── Toggle de contraseña ──────────────────────────────────────────────────
+    if (togglePw && passwordInput) {
+        togglePw.addEventListener('click', () => {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+
+            const icon = togglePw.querySelector('i');
+            if (icon) {
+                icon.className = isHidden ? 'fa fa-eye-slash' : 'fa fa-eye';
+            }
+
+            togglePw.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        });
+    }
+
+    // ── Helpers de UI ─────────────────────────────────────────────────────────
     const showMsg = (msg, type = 'error') => {
         if (!errorMsg) return;
         errorMsg.style.display = 'block';
@@ -24,38 +41,52 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMsg.textContent = msg;
     };
 
+    const hideMsg = () => {
+        if (!errorMsg) return;
+        errorMsg.style.display = 'none';
+    };
+
+    // ── Submit ────────────────────────────────────────────────────────────────
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            const email = emailInput.value.trim();
+            hideMsg();
+
+            const email    = emailInput.value.trim();
             const password = passwordInput.value.trim();
 
             if (!email || !password) return showMsg('Completa todos los campos');
 
             try {
+                // Mostrar loader y deshabilitar botón
                 loginButton.disabled = true;
-                loginButton.textContent = 'Verificando...';
+                showLoader();
 
-                // Llamada a la API
                 const data = await api.login(email, password);
 
-                showMsg('¡Bienvenido!', 'success');
+                // Guardar sesión
+                sessionStorage.setItem('numa_token', data.token);
 
-                // Guardar TenantId si existe
                 if (data.user?.tenantId) {
                     localStorage.setItem('numa_licencia', data.user.tenantId);
                 }
 
-                // 👇 ¡AQUÍ ESTÁ LA LÍNEA MÁGICA QUE FALTA! 👇
-                sessionStorage.setItem('numa_token', data.token);
+                // Guardar licenciaInfo si viene en la respuesta
+                if (data.licenciaInfo) {
+                    sessionStorage.setItem('numa_licencia_info', JSON.stringify(data.licenciaInfo));
+                }
 
-                setTimeout(() => window.location.href = 'index.html', 1000);
+                showMsg('¡Bienvenido!', 'success');
+
+                setTimeout(() => {
+                    hideLoader();
+                    window.location.href = 'index.html';
+                }, 800);
 
             } catch (error) {
+                hideLoader();
                 showMsg(error.message || 'Error de conexión');
                 loginButton.disabled = false;
-                loginButton.textContent = 'Entrar';
             }
         });
     }

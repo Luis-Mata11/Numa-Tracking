@@ -1,4 +1,4 @@
-// src/js/modules/utils/loader.ui.js
+// src/js/modules/utils/loader.js
 
 // 👇 IMPORTAMOS LA IMAGEN PARA QUE VITE LA EMPAQUETE
 // (Ajusta los '../' según dónde esté tu carpeta assets realmente)
