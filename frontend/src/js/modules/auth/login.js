@@ -1,6 +1,6 @@
 // src/js/modules/auth/login.js
 import { api } from '../services/api.js';
-import { showLoader, hideLoader } from '../utils/loader.js';
+import { showLoader, hideLoader } from '../../utils/loader.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Login Module Loaded');
