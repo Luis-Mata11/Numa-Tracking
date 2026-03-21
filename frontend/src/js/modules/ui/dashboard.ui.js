@@ -178,7 +178,11 @@ export const KPIManager = {
 
         const pendientes   = routesData.filter(r => ['pendiente','pending'].includes(r.estado || r.status));
         const enCurso      = routesData.filter(r => ['en curso','active'].includes(r.estado || r.status));
-        const driverIdsOcupados = enCurso
+
+        // ── Solo rutas ACTIVAS (status === 'active') para calcular ocupación real ──
+        const rutasActivas = routesData.filter(r => r.status === 'active' || r.estado === 'en curso');
+
+        const driverIdsOcupados = rutasActivas
             .map(r => String(r.driver?._id || r.driver?.id || r.driver))
             .filter(Boolean);
         const choferesDisp = (driversData || []).filter(d => !driverIdsOcupados.includes(String(d._id || d.id)));
@@ -186,16 +190,16 @@ export const KPIManager = {
         // Actualizar números
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
-        // Vehículos en uso: los que tienen una ruta activa asignada
-        const vehicleIdsEnRuta = enCurso
+        // Vehículos en uso: solo los asignados a rutas con status 'active'
+        const vehicleIdsEnRuta = rutasActivas
             .map(r => String(r.vehicle?._id || r.vehicle?.id || r.vehicle))
             .filter(Boolean);
         const vehiculosEnRuta = vehicleIdsEnRuta.length;
         const vehiculosDisp   = _vehicles.filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id))).length;
 
         // IDs del HTML del dashboard
-        set('kpi-chactivos',     enCurso.length);      // Choferes en Ruta
-        set('kpi-vhactivos',     vehiculosEnRuta);     // Vehículos en Ruta
+        set('kpi-chactivos',     rutasActivas.length);  // Choferes en Ruta (solo activas)
+        set('kpi-vhactivos',     vehiculosEnRuta);      // Vehículos en Ruta
         set('kpi-chdisponibles', choferesDisp.length); // Choferes Disponibles
         set('kpi-vhdisponibles', vehiculosDisp);       // Vehículos Disponibles
         // Fallback IDs alternativos
