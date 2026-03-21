@@ -244,3 +244,85 @@
     font-size: 12px;
 }
 .route-tag.mini .route-dot { width:7px; height:7px; }
+
+/* ── Agregar a src/css/dashboard.css ────────────────────────────────────────── */
+
+/* Los KPI cards necesitan position:relative para anclar el dropdown */
+.kpi-card {
+    position: relative;
+    user-select: none;
+}
+
+.kpi-card[data-kpi]:hover {
+    box-shadow: 0 4px 16px rgba(108,140,255,.15);
+    transform: translateY(-1px);
+    transition: box-shadow .15s, transform .15s;
+}
+
+/* ── Dropdown ────────────────────────────────────────────────────────────────── */
+.kpi-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 260px;
+    max-width: 320px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(12,20,33,.13);
+    z-index: 500;
+    max-height: 280px;
+    overflow-y: auto;
+    animation: kpiDropIn .18s ease;
+}
+
+.kpi-dropdown.open {
+    display: block;
+}
+
+@keyframes kpiDropIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.kpi-dropdown-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: background .12s;
+}
+
+.kpi-dropdown-item:last-child { border-bottom: none; }
+
+.kpi-dropdown-item:hover { background: #f8faff; }
+
+.kpi-di-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f1724;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kpi-di-sub {
+    font-size: 11px;
+    color: #64748b;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kpi-dropdown-empty {
+    padding: 14px 16px;
+    font-size: 12px;
+    color: #94a3b8;
+    text-align: center;
+}
+
+/* Scrollbar del dropdown */
+.kpi-dropdown::-webkit-scrollbar { width: 4px; }
+.kpi-dropdown::-webkit-scrollbar-track { background: transparent; }
+.kpi-dropdown::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
