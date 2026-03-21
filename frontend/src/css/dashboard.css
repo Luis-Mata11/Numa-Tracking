@@ -246,6 +246,7 @@
 .route-tag.mini .route-dot { width:7px; height:7px; }
 
 /* ── Agregar a src/css/dashboard.css ────────────────────────────────────────── */
+/* ── Agregar a src/css/dashboard.css ────────────────────────────────────────── */
 
 /* Los KPI cards necesitan position:relative para anclar el dropdown */
 .kpi-card {
@@ -326,3 +327,20 @@
 .kpi-dropdown::-webkit-scrollbar { width: 4px; }
 .kpi-dropdown::-webkit-scrollbar-track { background: transparent; }
 .kpi-dropdown::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+/* ── Fix: dropdown por encima del mapa de Google Maps ──────────────────────── */
+/* Google Maps crea un stacking context propio. Para que el dropdown quede
+   por encima hay que forzar el z-index en el card container y en el dropdown */
+.kpi-container {
+    position: relative;
+    z-index: 200;          /* encima del mapa */
+}
+
+.kpi-card {
+    isolation: isolate;    /* propio stacking context */
+}
+
+.kpi-dropdown {
+    z-index: 9999 !important;  /* por encima de todo, incluido Google Maps */
+    position: fixed !important; /* fixed escapa del stacking context del mapa */
+}

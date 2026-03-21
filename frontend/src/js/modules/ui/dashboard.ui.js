@@ -123,12 +123,22 @@ export const KPIManager = {
         const card = document.querySelector(`[data-kpi="${kpiId}"]`);
         if (!card) return;
 
-        let dropdown = card.querySelector('.kpi-dropdown');
+        // Usamos un dropdown fuera del card para escapar del stacking context del mapa
+        let dropdown = document.getElementById(`kpi-drop-${kpiId}`);
         if (!dropdown) {
             dropdown = document.createElement('div');
+            dropdown.id        = `kpi-drop-${kpiId}`;
             dropdown.className = 'kpi-dropdown';
-            card.appendChild(dropdown);
+            document.body.appendChild(dropdown); // ← al body, no al card
         }
+
+        // Posicionar con getBoundingClientRect para escapar del mapa
+        const rect = card.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top      = `${rect.bottom + 6}px`;
+        dropdown.style.left     = `${rect.left}px`;
+        dropdown.style.width    = `${Math.max(rect.width, 260)}px`;
+        dropdown.style.zIndex   = '99999';
 
         dropdown.innerHTML = items.length
             ? items.map(item => `
@@ -172,6 +182,12 @@ export const KPIManager = {
 
         // Actualizar números
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        // IDs deben coincidir con el HTML del dashboard
+        set('kpi-chactivos',    enCurso.length);          // Choferes en Ruta
+        set('kpi-vhactivos',    enCurso.length);           // Vehículos en Ruta (igual a rutas activas)
+        set('kpi-chdisponibles', choferesDisp.length);     // Choferes Disponibles
+        set('kpi-vhdisponibles', (driversData?.length || 0) - enCurso.length); // Vehículos Disponibles
+        // Fallback: si el HTML usa los IDs originales también los actualizamos
         set('kpi-activos',   enCurso.length);
         set('kpi-rutas',     pendientes.length);
         set('kpi-alertas',   choferesDisp.length);
