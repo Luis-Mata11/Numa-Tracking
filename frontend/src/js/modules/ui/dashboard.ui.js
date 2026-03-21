@@ -5,6 +5,7 @@
 // ─── Estado compartido (inyectado desde dashboard.js) ─────────────────────────
 let _routes            = [];
 let _drivers           = [];
+let _vehicles          = [];
 let _lastKnownLocations = {};
 let _onRouteSelected   = null; // callback(route) para notificar al mapa
 
@@ -12,9 +13,10 @@ let _onRouteSelected   = null; // callback(route) para notificar al mapa
  * Inicializa el módulo con las referencias de estado del dashboard.
  * Llamar una vez desde dashboard.js después de cargar los datos.
  */
-export function initDashboardUI({ routes, drivers, lastKnownLocations, onRouteSelected }) {
+export function initDashboardUI({ routes, drivers, vehicles, lastKnownLocations, onRouteSelected }) {
     _routes             = routes;
     _drivers            = drivers;
+    _vehicles           = vehicles || [];
     _lastKnownLocations = lastKnownLocations;
     _onRouteSelected    = onRouteSelected || null;
 }
@@ -22,9 +24,10 @@ export function initDashboardUI({ routes, drivers, lastKnownLocations, onRouteSe
 /**
  * Sincroniza las referencias de datos cuando se actualicen (App.updateAll).
  */
-export function syncDashboardUIState({ routes, drivers, lastKnownLocations }) {
+export function syncDashboardUIState({ routes, drivers, vehicles, lastKnownLocations }) {
     _routes             = routes;
     _drivers            = drivers;
+    _vehicles           = vehicles !== undefined ? vehicles : _vehicles;
     _lastKnownLocations = lastKnownLocations;
 }
 
@@ -182,12 +185,20 @@ export const KPIManager = {
 
         // Actualizar números
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-        // IDs deben coincidir con el HTML del dashboard
-        set('kpi-chactivos',    enCurso.length);          // Choferes en Ruta
-        set('kpi-vhactivos',    enCurso.length);           // Vehículos en Ruta (igual a rutas activas)
-        set('kpi-chdisponibles', choferesDisp.length);     // Choferes Disponibles
-        set('kpi-vhdisponibles', (driversData?.length || 0) - enCurso.length); // Vehículos Disponibles
-        // Fallback: si el HTML usa los IDs originales también los actualizamos
+
+        // Vehículos en uso: los que tienen una ruta activa asignada
+        const vehicleIdsEnRuta = enCurso
+            .map(r => String(r.vehicle?._id || r.vehicle?.id || r.vehicle))
+            .filter(Boolean);
+        const vehiculosEnRuta = vehicleIdsEnRuta.length;
+        const vehiculosDisp   = _vehicles.filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id))).length;
+
+        // IDs del HTML del dashboard
+        set('kpi-chactivos',     enCurso.length);      // Choferes en Ruta
+        set('kpi-vhactivos',     vehiculosEnRuta);     // Vehículos en Ruta
+        set('kpi-chdisponibles', choferesDisp.length); // Choferes Disponibles
+        set('kpi-vhdisponibles', vehiculosDisp);       // Vehículos Disponibles
+        // Fallback IDs alternativos
         set('kpi-activos',   enCurso.length);
         set('kpi-rutas',     pendientes.length);
         set('kpi-alertas',   choferesDisp.length);
@@ -226,11 +237,12 @@ export const KPIManager = {
             driverId: String(d._id || d.id)
         })));
 
-        bindKpi('vehiculos',  '.kpi-card:nth-child(4)', () => (driversData || []).map(d => ({
-            name:     d.nombre || d.name || 'Chofer',
-            sub:      d.email  || '—',
-            driverId: String(d._id || d.id)
-        })));
+        bindKpi('vehiculos',  '.kpi-card:nth-child(4)', () => _vehicles
+            .filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id)))
+            .map(v => ({
+                name: v.alias || v.placa || 'Vehículo',
+                sub:  `${v.marca || ''} ${v.modelo || ''}`.trim() || v.placa || '—'
+            })));
 
         // Listener global de cierre (una sola vez)
         if (!this._bound) {

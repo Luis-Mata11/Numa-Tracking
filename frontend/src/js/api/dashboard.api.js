@@ -39,6 +39,12 @@ export async function fetchDrivers() {
     return res.json();
 }
 
+export async function fetchVehicles() {
+    const res = await authFetch('/vehicles');
+    if (!res.ok) throw new Error('Error cargando vehículos');
+    return res.json();
+}
+
 export async function finalizeRoute(routeId) {
     const res = await authFetch(`/routes/${routeId}/status`, {
         method: 'PATCH',

@@ -7,6 +7,7 @@ import {
     fetchBaseCoords,
     fetchRoutes,
     fetchDrivers,
+    fetchVehicles,
     finalizeRoute
 } from '../api/dashboard.api.js';
 import { checkLicense } from '../utils/license.js';
@@ -19,13 +20,14 @@ import {
     updateInfoPanel,
     updateCoordsDisplay,
     KPIManager
-} from '../modules/ui/dashboard.ui.js';
+} from '../ui/dashboard.ui.js';
 
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let map                 = null;
 let socket              = null;
 let routes              = [];
 let drivers             = [];
+let vehicles            = [];
 let routePolylines      = {};
 let actualPathPolylines = {};
 let driverMarkers       = {};
@@ -321,10 +323,10 @@ const SocketManager = {
 const App = {
     async updateAll() {
         try {
-            [drivers, routes] = await Promise.all([fetchDrivers(), fetchRoutes()]);
+            [drivers, routes, vehicles] = await Promise.all([fetchDrivers(), fetchRoutes(), fetchVehicles()]);
 
             // Sincronizar estado en dashboard.ui.js
-            syncDashboardUIState({ routes, drivers, lastKnownLocations });
+            syncDashboardUIState({ routes, drivers, vehicles, lastKnownLocations });
 
             // KPIs con dropdowns (dashboard.ui.js)
             KPIManager.update(routes, drivers);
@@ -359,6 +361,7 @@ export async function init() {
         initDashboardUI({
             routes,
             drivers,
+            vehicles,
             lastKnownLocations,
             onRouteSelected: (routeId) => {
                 activeRouteId = routeId;
