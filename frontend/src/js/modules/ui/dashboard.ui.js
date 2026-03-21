@@ -191,9 +191,11 @@ export const KPIManager = {
         const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
 
         // Vehículos en uso: solo los asignados a rutas con status 'active'
+        // Filtramos 'undefined', 'null' y strings vacíos que aparecen cuando
+        // la ruta no tiene vehículo asignado
         const vehicleIdsEnRuta = rutasActivas
-            .map(r => String(r.vehicle?._id || r.vehicle?.id || r.vehicle))
-            .filter(Boolean);
+            .map(r => r.vehicle?._id || r.vehicle?.id || (typeof r.vehicle === 'string' ? r.vehicle : null))
+            .filter(id => id && id !== 'null' && id !== 'undefined' && String(id).length > 5);
         const vehiculosEnRuta = vehicleIdsEnRuta.length;
         const vehiculosDisp   = _vehicles.filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id))).length;
 
@@ -223,17 +225,24 @@ export const KPIManager = {
             });
         };
 
-        bindKpi('enCurso',    '.kpi-card:nth-child(1)', () => enCurso.map(r => ({
-            name:    r.name || 'Ruta sin nombre',
-            sub:     `${r.driver?.nombre || 'Sin chofer'} · ${r.vehicle?.alias || r.vehicle?.placa || 'Sin vehículo'}`,
+        // Card 1: Choferes en Ruta → lista las rutas activas con su chofer y vehículo
+        bindKpi('enCurso',    '.kpi-card:nth-child(1)', () => rutasActivas.map(r => ({
+            name:    r.driver?.nombre || r.driver?.name || 'Sin chofer',
+            sub:     `${r.name || 'Ruta'} · ${r.vehicle?.alias || r.vehicle?.placa || 'Sin vehículo'}`,
             routeId: String(r._id || r.id)
         })));
 
-        bindKpi('pendientes', '.kpi-card:nth-child(2)', () => pendientes.map(r => ({
-            name:    r.name || 'Ruta sin nombre',
-            sub:     `Código: ${r.accessCode || '—'} · ${r.driver?.nombre || 'Sin chofer'}`,
-            routeId: String(r._id || r.id)
-        })));
+        // Card 2: Vehículos en Ruta → lista los vehículos ocupados con su ruta asignada
+        bindKpi('pendientes', '.kpi-card:nth-child(2)', () => {
+            const vehs = rutasActivas
+                .filter(r => r.vehicle && typeof r.vehicle === 'object' && (r.vehicle._id || r.vehicle.id))
+                .map(r => ({
+                    name: r.vehicle?.alias || r.vehicle?.placa || 'Vehículo',
+                    sub:  `En ruta: ${r.name || '—'} · ${r.driver?.nombre || 'Sin chofer'}`,
+                    routeId: String(r._id || r.id)
+                }));
+            return vehs;
+        });
 
         bindKpi('choferes',   '.kpi-card:nth-child(3)', () => choferesDisp.map(d => ({
             name:     d.nombre || d.name || 'Chofer',
