@@ -19,7 +19,7 @@ import {
     updateInfoPanel,
     updateCoordsDisplay,
     KPIManager
-} from '../ui/dashboard.ui.js';
+} from '../modules/ui/dashboard.ui.js';
 
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let map                 = null;
