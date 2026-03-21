@@ -9,25 +9,44 @@ import {
     fetchDrivers,
     finalizeRoute
 } from '../api/dashboard.api.js';
-
 import { checkLicense } from '../utils/license.js';
 
+// ── Importamos el módulo de UI separado ──────────────────────────────────────
+import {
+    initDashboardUI,
+    syncDashboardUIState,
+    showToast,
+    updateInfoPanel,
+    updateCoordsDisplay,
+    KPIManager
+} from '../ui/dashboard.ui.js';
+
 // ─── Estado del módulo ────────────────────────────────────────────────────────
-let map               = null;
-let socket            = null;
-let directionsService = null;
-let directionsRenderer= null;
-let routes            = [];
-let drivers           = [];
-let routePolylines    = {};
+let map                 = null;
+let socket              = null;
+let routes              = [];
+let drivers             = [];
+let routePolylines      = {};
 let actualPathPolylines = {};
-let driverMarkers     = {};
-let routeStaticMarkers= {};
-let lastKnownLocations= {};
-let activeRouteId     = null;
+let driverMarkers       = {};
+let routeStaticMarkers  = {};
+let lastKnownLocations  = {};
+let activeRouteId       = null;
 let pendingConfirmations = new Set();
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// ─── Resaltar ruta seleccionada en el mapa ────────────────────────────────────
+function _highlightRoute(selectedId) {
+    Object.entries(routePolylines).forEach(([id, polys]) => {
+        const sel = id === selectedId;
+        polys.grey?.setOptions({
+            strokeOpacity: sel ? 0.95 : 0.35,
+            strokeWeight:  sel ? 7   : 4,
+            zIndex:        sel ? 10  : 1
+        });
+    });
+}
 
 // ─── Modal de confirmación de finalización ────────────────────────────────────
 const FinishModal = {
@@ -46,20 +65,16 @@ const FinishModal = {
         text.innerHTML = `<strong>${nombreChofer}</strong> solicita finalizar la ruta <strong>"${nombreRuta}"</strong>. ¿Deseas aprobarla?`;
         container.style.display = 'flex';
 
-        // Agregar al panel de notificaciones de la campana
-        if (window.addNotification) {
-            window.addNotification(
-                'Solicitud de finalización',
-                `${nombreChofer} quiere finalizar "${nombreRuta}"`,
-                'fa-solid fa-flag-checkered',
-                '#f59e0b'
-            );
-        }
+        window.addNotification?.(
+            'Solicitud de finalización',
+            `${nombreChofer} quiere finalizar "${nombreRuta}"`,
+            'fa-solid fa-flag-checkered', '#f59e0b'
+        );
     },
 
     hide() {
-        const container = document.getElementById('notification-container');
-        if (container) container.style.display = 'none';
+        const c = document.getElementById('notification-container');
+        if (c) c.style.display = 'none';
         this._pendingData = null;
     },
 
@@ -67,23 +82,16 @@ const FinishModal = {
         const data = this._pendingData;
         if (!data) return;
         this.hide();
-
         try {
             await finalizeRoute(data.routeId);
             MapManager.clearRoute(data.routeId, data.driverId);
-            UI.showToast('✅ Ruta finalizada exitosamente.');
-
-            if (window.addNotification) {
-                window.addNotification(
-                    'Ruta finalizada',
-                    `"${data.routeName || data.routeId}" fue finalizada.`,
-                    'fa-solid fa-circle-check',
-                    '#10b981'
-                );
-            }
+            showToast('✅ Ruta finalizada exitosamente.');
+            window.addNotification?.('Ruta finalizada',
+                `"${data.routeName || data.routeId}" fue finalizada.`,
+                'fa-solid fa-circle-check', '#10b981');
         } catch (err) {
-            console.error('❌ Error finalizando ruta:', err);
-            UI.showToast('Error al finalizar la ruta.', 5000);
+            console.error('Error finalizando ruta:', err);
+            showToast('Error al finalizar la ruta.', 5000);
         } finally {
             pendingConfirmations.delete(data.routeId);
         }
@@ -92,89 +100,17 @@ const FinishModal = {
     decline() {
         const data = this._pendingData;
         this.hide();
-
-        if (data) {
-            pendingConfirmations.delete(data.routeId);
-            UI.showToast('Solicitud de finalización rechazada.');
-
-            if (window.addNotification) {
-                window.addNotification(
-                    'Finalización rechazada',
-                    `Solicitud de "${data.routeName || data.routeId}" fue rechazada.`,
-                    'fa-solid fa-circle-xmark',
-                    '#ef4444'
-                );
-            }
-        }
+        if (!data) return;
+        pendingConfirmations.delete(data.routeId);
+        showToast('Solicitud de finalización rechazada.');
+        window.addNotification?.('Finalización rechazada',
+            `Solicitud de "${data.routeName || data.routeId}" fue rechazada.`,
+            'fa-solid fa-circle-xmark', '#ef4444');
     },
 
     bindButtons() {
-        document.getElementById('btn-accept-finish')?.addEventListener('click', () => {
-            FinishModal.accept();
-        });
-        document.getElementById('btn-decline-finish')?.addEventListener('click', () => {
-            FinishModal.decline();
-        });
-    }
-};
-
-// ─── UI ───────────────────────────────────────────────────────────────────────
-const UI = {
-    showToast(message, duration = 3000) {
-        document.getElementById('toast-notification')?.remove();
-
-        const toast = document.createElement('div');
-        toast.id = 'toast-notification';
-        toast.textContent = message;
-        toast.style.cssText = `
-            position:fixed; bottom:20px; right:20px;
-            background:#2ecc71; color:#fff;
-            padding:12px 20px; border-radius:6px;
-            box-shadow:0 4px 12px rgba(0,0,0,.15);
-            z-index:9999; font-weight:500;
-        `;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), duration);
-    },
-
-    updateKPIs(routesData) {
-        if (!Array.isArray(routesData)) return;
-
-        const set = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        };
-
-        set('kpi-activos',   routesData.filter(r => r.estado === 'pendiente').length);
-        set('kpi-rutas',     routesData.filter(r => r.estado === 'en curso').length);
-        set('kpi-alertas',   routesData.filter(r => r.estado === 'finalizada').length);
-        set('kpi-distancia', drivers.length);
-    },
-
-    updateInfoPanel(route) {
-        const set = (id, value) => {
-            const el = document.getElementById(id);
-            if (el) el.textContent = value;
-        };
-
-        set('route-name-display', route.name || 'Sin asignar');
-        set('route-id-display',   route.id   || '...');
-
-        let driverName = 'Sin asignar';
-        if (route.driver) {
-            const d = drivers.find(dr =>
-                dr.id === route.driver || dr.id === route.driver?.id
-            );
-            if (d) driverName = d.name;
-        }
-        set('chofer-name-display', driverName);
-
-        const lastLoc = route.driver
-            ? lastKnownLocations[route.driver?.id || route.driver]
-            : null;
-        if (lastLoc) {
-            set('coords-display', `${lastLoc.lat.toFixed(5)}, ${lastLoc.lng.toFixed(5)}`);
-        }
+        document.getElementById('btn-accept-finish')?.addEventListener('click',  () => this.accept());
+        document.getElementById('btn-decline-finish')?.addEventListener('click', () => this.decline());
     }
 };
 
@@ -192,18 +128,11 @@ const MapManager = {
         map = new window.google.maps.Map(mapEl, {
             center: { lat: 19.7677724, lng: -104.3686507 },
             zoom: 13,
-            styles: [{
-                featureType: 'poi',
-                elementType: 'labels',
-                stylers: [{ visibility: 'off' }]
-            }],
+            styles: [{ featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] }],
             mapTypeControl:    false,
             streetViewControl: false,
             fullscreenControl: true
         });
-
-        directionsService  = new window.google.maps.DirectionsService();
-        directionsRenderer = new window.google.maps.DirectionsRenderer({ map, draggable: true });
 
         await this.loadBaseMarker();
     },
@@ -212,13 +141,10 @@ const MapManager = {
         try {
             const coords = await fetchBaseCoords();
             const pos    = { lat: parseFloat(coords.lat), lng: parseFloat(coords.lng) };
-
             map.setCenter(pos);
             map.setZoom(15);
-
             new window.google.maps.Marker({
-                position: pos, map,
-                title: 'Base Operativa',
+                position: pos, map, title: 'Base Operativa',
                 icon: {
                     url:        '/assets/base.svg',
                     scaledSize: new window.google.maps.Size(42, 42),
@@ -226,59 +152,79 @@ const MapManager = {
                 },
                 zIndex: 1000
             });
-        } catch (error) {
-            console.warn('Base operativa no cargada:', error.message);
+        } catch (err) {
+            console.warn('Base operativa no cargada:', err.message);
             const modal = document.getElementById('modal-no-base');
             if (modal) modal.style.display = 'flex';
         }
     },
 
     async drawRoutes(routesData) {
+        // Limpiar rutas previas
         Object.values(routePolylines).forEach(({ grey, color }) => {
             grey?.setMap(null);
             color?.setMap(null);
         });
         routePolylines = {};
 
-        const inProgress = routesData.filter(r =>
-            r.estado === 'en curso' && r.waypoints?.length > 0
+        // Usamos encodedPolyline si está disponible, fallback a waypoints
+        const activas = routesData.filter(r =>
+            ['en curso', 'active'].includes(r.estado || r.status)
         );
-        if (!inProgress.length) return;
+        if (!activas.length) return;
 
         const bounds = new window.google.maps.LatLngBounds();
 
-        inProgress.forEach(route => {
-            const pathCoords = route.waypoints.map(wp => ({
-                lat: parseFloat(wp.lat),
-                lng: parseFloat(wp.lng)
-            }));
-            const routeColor = route.status === 'cancelled'
-                ? '#e74c3c'
-                : (route.color || '#f357a1');
+        activas.forEach(route => {
+            const routeId    = String(route._id || route.id);
+            const routeColor = route.color || '#f357a1';
+
+            let pathCoords = [];
+
+            if (route.trayecto?.encodedPolyline) {
+                pathCoords = window.google.maps.geometry.encoding
+                    .decodePath(route.trayecto.encodedPolyline)
+                    .map(p => ({ lat: p.lat(), lng: p.lng() }));
+            } else if (route.waypoints?.length) {
+                pathCoords = route.waypoints.map(wp => ({
+                    lat: parseFloat(wp.lat),
+                    lng: parseFloat(wp.lng)
+                }));
+            }
+
+            if (!pathCoords.length) return;
 
             const greyLine = new window.google.maps.Polyline({
-                path: pathCoords, geodesic: true,
-                strokeColor: '#616142', strokeOpacity: 0.6, strokeWeight: 4,
-                map, zIndex: 1
+                path:          pathCoords,
+                geodesic:      true,
+                strokeColor:   routeColor,
+                strokeOpacity: 0.6,
+                strokeWeight:  4,
+                map,
+                zIndex:        1,
+                clickable:     true
             });
+
+            // Click en polilínea → actualiza info panel (desde dashboard.ui.js)
+            greyLine.addListener('click', () => {
+                activeRouteId = routeId;
+                updateInfoPanel(route);
+            });
+
             const colorLine = new window.google.maps.Polyline({
                 path: [], geodesic: true,
                 strokeColor: routeColor, strokeOpacity: 1.0, strokeWeight: 6,
                 map, zIndex: 2
             });
 
-            greyLine.addListener('click', () => {
-                activeRouteId = route.id;
-                UI.updateInfoPanel(route);
-            });
-
-            routePolylines[route.id] = {
-                grey: greyLine, color: colorLine, fullPath: pathCoords, routeData: route
+            routePolylines[routeId] = {
+                grey: greyLine, color: colorLine,
+                fullPath: pathCoords, routeData: route
             };
             pathCoords.forEach(p => bounds.extend(p));
         });
 
-        map.fitBounds(bounds);
+        if (!bounds.isEmpty()) map.fitBounds(bounds);
     },
 
     clearRoute(routeId, driverId) {
@@ -296,10 +242,7 @@ const MapManager = {
             delete driverMarkers[driverId];
         }
         if (routeStaticMarkers[routeId]) {
-            routeStaticMarkers[routeId].forEach(item => {
-                item.setMap?.(null);
-                item.close?.();
-            });
+            routeStaticMarkers[routeId].forEach(i => { i.setMap?.(null); i.close?.(); });
             delete routeStaticMarkers[routeId];
         }
     }
@@ -308,15 +251,10 @@ const MapManager = {
 // ─── Socket ───────────────────────────────────────────────────────────────────
 const SocketManager = {
     init() {
-        if (!window.io) {
-            console.warn('Socket.io no cargado');
-            return;
-        }
+        if (!window.io) { console.warn('Socket.io no cargado'); return; }
 
-        const SERVER_URL = API_BASE_URL.replace('/api', '');
-        socket = window.io(SERVER_URL);
+        socket = window.io(API_BASE_URL.replace('/api', ''));
 
-        // ── Solicitud de finalización → modal custom ──────────────────────────
         socket.on('finishRouteRequested', (data) => {
             if (pendingConfirmations.has(data.routeId)) return;
             pendingConfirmations.add(data.routeId);
@@ -324,22 +262,16 @@ const SocketManager = {
         });
 
         socket.on('locationUpdate', (data) => {
-            if (!data?.lat || !data?.lng) return;
-
-            if (data.routeId && !routeStaticMarkers[data.routeId]) {
-                console.warn(`Ubicación ignorada — ruta ${data.routeId} ya finalizó.`);
-                return;
-            }
+            if (!data?.lat || !data?.lng || !map) return;
 
             const pos = { lat: parseFloat(data.lat), lng: parseFloat(data.lng) };
-            if (!map) return;
 
+            // Actualizar o crear marcador del vehículo
             if (driverMarkers[data.driverId]) {
                 driverMarkers[data.driverId].setPosition(pos);
             } else {
                 driverMarkers[data.driverId] = new window.google.maps.Marker({
-                    position: pos, map,
-                    title: 'Vehículo en movimiento',
+                    position: pos, map, title: 'Vehículo en movimiento',
                     icon: {
                         url:        '/assets/car.svg',
                         scaledSize: new window.google.maps.Size(36, 36),
@@ -349,29 +281,33 @@ const SocketManager = {
                 });
             }
 
-            const lastLoc  = lastKnownLocations[data.driverId];
-            let   distance = 0;
-
-            if (lastLoc) {
-                distance = window.google.maps.geometry.spherical.computeDistanceBetween(
-                    new window.google.maps.LatLng(lastLoc.lat, lastLoc.lng),
+            // Trazo de recorrido real (filtro anti-ruido 15m)
+            const last = lastKnownLocations[String(data.driverId)];
+            let dist   = 0;
+            if (last) {
+                dist = window.google.maps.geometry.spherical.computeDistanceBetween(
+                    new window.google.maps.LatLng(last.lat, last.lng),
                     new window.google.maps.LatLng(pos.lat, pos.lng)
                 );
             }
-
-            if (!lastLoc || distance > 15) {
+            if (!last || dist > 15) {
                 actualPathPolylines[data.driverId]
                     ?.getPath()
                     .push(new window.google.maps.LatLng(pos.lat, pos.lng));
-
-                lastKnownLocations[data.driverId] = {
+                lastKnownLocations[String(data.driverId)] = {
                     lat: pos.lat, lng: pos.lng, timestamp: Date.now()
                 };
+                // Mantener dashboard.ui.js sincronizado con las ubicaciones
+                syncDashboardUIState({ routes, drivers, lastKnownLocations });
             }
 
-            if (activeRouteId && routePolylines[activeRouteId]?.routeData.driver === data.driverId) {
-                const el = document.getElementById('coords-display');
-                if (el) el.textContent = `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`;
+            // Si el chofer pertenece a la ruta activa → actualizar coords en panel
+            if (activeRouteId) {
+                const ar  = routes.find(r => String(r._id || r.id) === activeRouteId);
+                const aid = ar ? String(ar.driver?._id || ar.driver?.id || ar.driver) : null;
+                if (aid && aid === String(data.driverId)) {
+                    updateCoordsDisplay(pos.lat, pos.lng);
+                }
             }
         });
 
@@ -387,17 +323,18 @@ const App = {
         try {
             [drivers, routes] = await Promise.all([fetchDrivers(), fetchRoutes()]);
 
-            UI.updateKPIs(routes);
+            // Sincronizar estado en dashboard.ui.js
+            syncDashboardUIState({ routes, drivers, lastKnownLocations });
+
+            // KPIs con dropdowns (dashboard.ui.js)
+            KPIManager.update(routes, drivers);
+
             await MapManager.drawRoutes(routes);
 
             if (socket) {
                 routes
-                    .filter(r => r.status === 'active' || r.estado === 'en curso')
-                    .forEach(route => {
-                        const routeId = String(route.id || route._id);
-                        socket.emit('joinRoute', { routeId });
-                        console.log(`📡 Suscrito a sala de ruta: ${routeId}`);
-                    });
+                    .filter(r => ['active', 'en curso'].includes(r.status || r.estado))
+                    .forEach(r => socket.emit('joinRoute', { routeId: String(r._id || r.id) }));
             }
         } catch (err) {
             console.error('Error al actualizar datos:', err);
@@ -418,6 +355,17 @@ export async function init() {
     showLoader();
 
     try {
+        // Inicializar dashboard.ui.js con estado inicial y callback de highlight
+        initDashboardUI({
+            routes,
+            drivers,
+            lastKnownLocations,
+            onRouteSelected: (routeId) => {
+                activeRouteId = routeId;
+                _highlightRoute(routeId);
+            }
+        });
+
         document.getElementById('btn-close-modal')?.addEventListener('click', () => {
             document.getElementById('modal-no-base').style.display = 'none';
         });
@@ -426,7 +374,6 @@ export async function init() {
             window.location.href = '/settings';
         });
 
-        // Vincular botones del modal de finalización
         FinishModal.bindButtons();
 
         await MapManager.init();
@@ -436,7 +383,7 @@ export async function init() {
 
     } catch (error) {
         console.error('🔥 Error iniciando Dashboard:', error);
-        UI.showToast('Hubo un error al cargar el panel.', 5000);
+        showToast('Hubo un error al cargar el panel.', 5000);
     } finally {
         hideLoader();
     }
@@ -447,93 +394,79 @@ export async function drawActiveRoutesOnMap(mapInstance) {
     if (!window.google?.maps || !mapInstance) return;
 
     try {
-        const allRoutes    = await fetchRoutes();
-        const activeRoutes = allRoutes.filter(r => r.status === 'active');
+        const activeRoutes = (await fetchRoutes()).filter(r => r.status === 'active');
 
         activeRoutes.forEach(route => {
             if (!route.trayecto?.encodedPolyline) return;
 
-            const routeId         = route.id || route._id;
-            const markersForRoute = [];
+            const routeId = String(route._id || route.id);
+            const marks   = [];
 
-            const decodedPath = window.google.maps.geometry.encoding.decodePath(
+            // Polilínea planeada (gris, clicable)
+            const decoded = window.google.maps.geometry.encoding.decodePath(
                 route.trayecto.encodedPolyline
             );
-            markersForRoute.push(new window.google.maps.Polyline({
-                path: decodedPath, geodesic: true,
+            const plannedLine = new window.google.maps.Polyline({
+                path: decoded, geodesic: true,
                 strokeColor: '#808080', strokeOpacity: 0.7, strokeWeight: 4,
-                map: mapInstance, zIndex: 1
-            }));
+                map: mapInstance, zIndex: 1, clickable: true
+            });
+            plannedLine.addListener('click', () => {
+                activeRouteId = routeId;
+                updateInfoPanel(route);
+            });
+            marks.push(plannedLine);
 
-            const realPath = (route.recorridoReal || []).map(p => ({
-                lat: parseFloat(p.lat), lng: parseFloat(p.lng)
-            }));
-            const actualPolyline = new window.google.maps.Polyline({
-                path: realPath, geodesic: true,
-                strokeColor: '#007BFF', strokeOpacity: 1.0, strokeWeight: 5,
+            // Polilínea de recorrido real (azul)
+            const realLine = new window.google.maps.Polyline({
+                path: (route.recorridoReal || []).map(p => ({
+                    lat: parseFloat(p.lat), lng: parseFloat(p.lng)
+                })),
+                geodesic: true, strokeColor: '#007BFF', strokeOpacity: 1.0, strokeWeight: 5,
                 map: mapInstance, zIndex: 2
             });
-
-            const driverId = typeof route.driver === 'object'
+            const did = typeof route.driver === 'object'
                 ? (route.driver._id || route.driver.id)
                 : route.driver;
-            if (driverId) actualPathPolylines[driverId] = actualPolyline;
+            if (did) actualPathPolylines[String(did)] = realLine;
 
-            const markerIcon = (color) => ({
-                path:         window.google.maps.SymbolPath.CIRCLE,
-                scale:        6,
-                fillColor:    color,
-                fillOpacity:  1,
-                strokeWeight: 2,
-                strokeColor:  '#FFFFFF'
+            // Marcadores inicio / destino
+            const ico = (c) => ({
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 6, fillColor: c, fillOpacity: 1, strokeWeight: 2, strokeColor: '#FFF'
             });
-
-            markersForRoute.push(
-                new window.google.maps.Marker({
-                    position: { lat: route.trayecto.origin.lat,      lng: route.trayecto.origin.lng },
-                    map: mapInstance, icon: markerIcon('#4CAF50'), title: 'Inicio'
-                }),
-                new window.google.maps.Marker({
-                    position: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng },
-                    map: mapInstance, icon: markerIcon('#F44336'), title: 'Destino'
-                })
+            marks.push(
+                new window.google.maps.Marker({ position: { lat: route.trayecto.origin.lat,      lng: route.trayecto.origin.lng      }, map: mapInstance, icon: ico('#4CAF50'), title: 'Inicio'  }),
+                new window.google.maps.Marker({ position: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng }, map: mapInstance, icon: ico('#F44336'), title: 'Destino' })
             );
 
+            // Waypoints
             (route.trayecto.waypoints || []).forEach((wp, i) => {
-                markersForRoute.push(new window.google.maps.Marker({
-                    position: { lat: wp.lat, lng: wp.lng },
-                    map: mapInstance,
-                    icon: {
-                        path:         window.google.maps.SymbolPath.CIRCLE,
-                        scale:        4,
-                        fillColor:    '#FFC107',
-                        fillOpacity:  1,
-                        strokeWeight: 1,
-                        strokeColor:  '#000000'
-                    },
+                marks.push(new window.google.maps.Marker({
+                    position: { lat: wp.lat, lng: wp.lng }, map: mapInstance,
+                    icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#FFC107', fillOpacity: 1, strokeWeight: 1, strokeColor: '#000' },
                     title: `Parada ${i + 1}`
                 }));
             });
 
-            const driverName = route.driver?.nombre || 'Sin chofer';
-            const routeColor = route.color || '#0056b3';
-            const infoWindow = new window.google.maps.InfoWindow({
+            // InfoWindow con nombre y chofer
+            const iw = new window.google.maps.InfoWindow({
                 content: `
-                    <div class="route-tag" style="--dot-color:${routeColor};">
+                    <div class="route-tag" style="--dot-color:${route.color || '#0056b3'};">
                         <span class="route-dot"></span>
                         <span class="route-text">
                             <span class="route-name">${route.name}</span>
-                            <span class="route-driver">(${driverName})</span>
+                            <span class="route-driver">(${route.driver?.nombre || 'Sin chofer'})</span>
                         </span>
                     </div>`,
                 position:       { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
                 disableAutoPan: true,
                 pixelOffset:    new window.google.maps.Size(0, -10)
             });
-            infoWindow.open(mapInstance);
-            markersForRoute.push(infoWindow);
+            iw.open(mapInstance);
+            marks.push(iw);
 
-            routeStaticMarkers[routeId] = markersForRoute;
+            routeStaticMarkers[routeId] = marks;
         });
 
     } catch (error) {
