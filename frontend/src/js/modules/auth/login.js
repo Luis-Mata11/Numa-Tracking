@@ -1,8 +1,6 @@
 // src/js/modules/auth/login.js
 import { api } from '../services/api.js';
-import { showLoader, hideLoader } from '../../utils/loader.js';
-import '../../../css/loader.css';
-
+import { showLoader, hideLoader } from '../utils/loader.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Login Module Loaded');
@@ -27,10 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
             passwordInput.type = isHidden ? 'text' : 'password';
 
             const icon = togglePw.querySelector('i');
-            if (icon) {
-                icon.className = isHidden ? 'fa fa-eye-slash' : 'fa fa-eye';
-            }
+            if (icon) icon.className = isHidden ? 'fa fa-eye-slash' : 'fa fa-eye';
 
+            // Clase visual: ojo azul cuando la contraseña está visible
+            togglePw.classList.toggle('pw-visible', isHidden);
             togglePw.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
         });
     }

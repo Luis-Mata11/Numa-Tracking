@@ -356,6 +356,298 @@ input[type="password"][aria-invalid="true"]:focus {
   color: var(--accent);
 }
 
+/* src/css/admin-login.css */
+
+/* ── Variables ────────────────────────────────────────────────────────────── */
+:root {
+  --bg:         #f5f7fb;
+  --surface:    #ffffff;
+  --muted:      #64748b;
+  --text:       #0f1724;
+  --sidebar-bg: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  --accent:     #6c8cff;
+  --shadow:     0 6px 18px rgba(12, 20, 33, 0.08);
+  --radius-lg:  14px;
+  --radius-sm:  8px;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Layout dos paneles ───────────────────────────────────────────────────── */
+.login-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+.form-panel {
+  flex: 1;
+  background-color: var(--bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* ── Panel derecho ────────────────────────────────────────────────────────── */
+.image-panel {
+  flex: 1;
+  background-image: url("../../public/img/fondo2.png");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;      /* leyenda al fondo */
+  justify-content: center;
+  padding: 40px 32px;
+}
+
+/* Overlay oscuro sobre la imagen para que la leyenda sea legible */
+.image-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(11, 18, 40, 0)   40%,
+    rgba(11, 18, 40, 0.75) 70%,
+    rgba(11, 18, 40, 0.92) 100%
+  );
+  pointer-events: none;
+}
+
+/* ── Leyenda del chofer ───────────────────────────────────────────────────── */
+.driver-cta {
+  position: relative;   /* por encima del overlay */
+  z-index: 1;
+  text-align: center;
+  color: #fff;
+  max-width: 380px;
+}
+
+.driver-cta-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(108, 140, 255, 0.25);
+  border: 1.5px solid rgba(108, 140, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 22px;
+  color: #a5b8ff;
+}
+
+.driver-cta h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -.3px;
+}
+
+.driver-cta p {
+  margin: 0 0 22px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.driver-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+  transition: background .2s, border-color .2s;
+}
+
+.driver-cta-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Formulario ───────────────────────────────────────────────────────────── */
+.wrap { width: 100%; max-width: 450px; }
+
+.brand { text-align: center; margin-bottom: 1.5rem; }
+.brand img   { width: 60px; height: auto; }
+.brand h1    { margin: 0.5rem 0 0.25rem; font-size: 1.75rem; color: var(--text); }
+
+.muted, .hint, .small.muted { color: var(--muted); font-size: 0.9rem; }
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 2.5rem;
+}
+
+h2#login-title { color: var(--text); }
+
+.field { margin-bottom: 1.25rem; }
+.field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+/* ── Mensajes ─────────────────────────────────────────────────────────────── */
+.error {
+  display: none;
+  margin: 1rem 0;
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  animation: slideDown 0.3s ease-out;
+  border-left: 4px solid;
+}
+.error.show { display: block; }
+.error.error-message   { background-color: #ffecec; border-color: #ff6b6b; color: #8a2a2a; }
+.error.success-message { background-color: #e8f8f5; border-color: #2ecc71; color: #1b7a5a; }
+.error.warning-message { background-color: #fff3cd; border-color: #f39c12; color: #7a5c0d; }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Input contraseña ─────────────────────────────────────────────────────── */
+.pw-wrap {
+  position: relative;
+  display: flex;
+}
+.pw-wrap input { flex: 1; }
+
+/* Cuando la contraseña está visible: borde y fondo de alerta suave */
+.pw-wrap input[type="text"] {
+  border-color: var(--accent) !important;
+  background: #f5f7ff !important;
+  box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.1);
+}
+
+.icon-btn {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  background: transparent;
+  border: none;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  color: var(--muted);
+  transition: color 0.2s, background-color 0.2s;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn:hover  { color: var(--text); background-color: rgba(0,0,0,.05); }
+.icon-btn:focus  { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Cuando está en modo "visible", el ojo se tiñe del accent */
+.icon-btn.pw-visible { color: var(--accent); }
+
+/* ── Inputs ───────────────────────────────────────────────────────────────── */
+input[type="email"],
+input[type="password"],
+input[type="text"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  background: #fdfdff;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="text"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(108, 140, 255, 0.1);
+}
+
+/* ── Botones ──────────────────────────────────────────────────────────────── */
+.card-footer { margin-top: 1.5rem; }
+
+.btn-primary {
+  width: 100%;
+  padding: 0.85rem;
+  background: var(--sidebar-bg);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #121d41 0%, #1d3366 100%);
+  box-shadow: 0 4px 12px rgba(108, 140, 255, 0.3);
+}
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+.small.muted { font-size: 0.875rem; text-decoration: none; }
+.small.muted:hover { text-decoration: underline; color: var(--accent); }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .form-panel { flex: 0.6; padding: 1.5rem; }
+  .image-panel { flex: 0.4; }
+  .wrap { max-width: 400px; }
+  .brand img { width: 52px; }
+  .brand h1  { font-size: 1.5rem; }
+  .card { padding: 2rem; }
+  input[type="email"], input[type="password"], input[type="text"] { font-size: 16px; }
+}
+
+@media (max-width: 768px) {
+  .login-container { flex-direction: column; }
+  .form-panel { flex: 1; height: auto; min-height: 100vh; padding: 2rem 1.5rem; align-items: flex-start; }
+  .image-panel { display: none; }
+  .wrap { max-width: 90%; }
+  .brand { margin-bottom: 1.25rem; }
+  .brand img { width: 48px; }
+  .brand h1  { font-size: 1.4rem; }
+  .card { padding: 1.5rem; border-radius: 0; box-shadow: none; }
+}
+
+@media (max-width: 480px) {
+  .form-panel { padding: 1.5rem 1rem; }
+  .field { margin-bottom: 1rem; }
+  .btn-primary { padding: 0.75rem; }
+  .wrap { max-width: 95%; }
+  .brand img { width: 40px; }
+  .brand h1  { font-size: 1.2rem; }
+  .card { padding: 1.25rem; }
+}
+
 /* --- 4. Responsive Design (Móvil) --- */
 
 @media (max-width: 1024px) {

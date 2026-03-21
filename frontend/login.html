@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NUMA Tracking - Acceso</title>
 
-<link rel="stylesheet" href="/src/css/admin-login.css">
+  <link rel="stylesheet" href="/src/css/admin-login.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="icon" type="image/png" sizes="16x16" href="/img/logo.png">
 </head>
@@ -13,6 +13,8 @@
 <body>
 
   <div class="login-container">
+
+    <!-- ── Panel izquierdo: formulario ── -->
     <div class="form-panel">
       <div class="wrap">
         <header class="brand center">
@@ -36,7 +38,7 @@
 
             <div class="field">
               <label for="email">Correo electrónico</label>
-              <input id="email" name="email" type="email" placeholder="tu@empresa.com" required 
+              <input id="email" name="email" type="email" placeholder="tu@empresa.com" required
                 aria-describedby="email-hint" autocomplete="email">
               <small id="email-hint" class="hint" style="display:block; margin-top:4px;">Usa tu correo administrativo</small>
             </div>
@@ -44,7 +46,7 @@
             <div class="field">
               <label for="password">Contraseña</label>
               <div class="pw-wrap">
-                <input id="password" name="password" type="password" placeholder="••••••••" required 
+                <input id="password" name="password" type="password" placeholder="••••••••" required
                   autocomplete="current-password">
                 <button type="button" id="toggle-pw" class="icon-btn" title="Mostrar contraseña" aria-label="Mostrar contraseña">
                   <i class="fa fa-eye"></i>
@@ -60,7 +62,7 @@
               <div class="center" style="margin-top: 20px;">
                 <p class="small muted">
                   ¿No tienes una cuenta?
-                  <a href="signUp.html" class="bold" style="color: var(--primary-color, #007bff);">Regístrate aquí</a>
+                  <a href="signUp.html" class="bold" style="color: var(--accent);">Regístrate aquí</a>
                 </p>
               </div>
             </div>
@@ -68,10 +70,25 @@
         </main>
       </div>
     </div>
-    <div class="image-panel"></div>
+
+    <!-- ── Panel derecho: imagen + leyenda chofer ── -->
+    <div class="image-panel">
+      <div class="driver-cta">
+        <div class="driver-cta-icon">
+          <i class="fa-solid fa-truck-fast"></i>
+        </div>
+        <h2>¿Eres chofer?</h2>
+        <p>Accede desde la aplicación móvil con tu correo y el código de acceso que te proporcionó el administrador.</p>
+        <a href="/mobile-login.html" class="driver-cta-btn">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+          Abrir app para choferes
+        </a>
+      </div>
+    </div>
+
   </div>
 
- <script type="module" src="/src/js/modules/auth/login.js"></script>
+  <script type="module" src="/src/js/modules/auth/login.js"></script>
 
 </body>
 </html>
