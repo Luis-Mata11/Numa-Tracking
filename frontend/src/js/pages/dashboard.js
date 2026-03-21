@@ -13,6 +13,7 @@ import {
 import { checkLicense } from '../utils/license.js';
 
 // ── Importamos el módulo de UI separado ──────────────────────────────────────
+// ── Importamos el módulo de UI separado ──────────────────────────────────────
 import {
     initDashboardUI,
     syncDashboardUIState,
@@ -20,7 +21,7 @@ import {
     updateInfoPanel,
     updateCoordsDisplay,
     KPIManager
-} from '../ui/dashboard.ui.js';
+} from '../modules/ui/dashboard.ui.js';
 
 // ─── Estado del módulo ────────────────────────────────────────────────────────
 let map                 = null;
