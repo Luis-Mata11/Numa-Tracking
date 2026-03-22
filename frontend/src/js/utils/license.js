@@ -24,21 +24,19 @@ function _getLicenseData() {
         const info = JSON.parse(raw);
         const hoy  = new Date();
 
-        // Recalculamos días restantes en el cliente para mayor precisión
-        const fechaFin     = info.fechaFin ? new Date(info.fechaFin) : null;
+        const fechaFin      = info.fechaFin ? new Date(info.fechaFin) : null;
         const diasRestantes = fechaFin
             ? Math.ceil((fechaFin - hoy) / (1000 * 60 * 60 * 24))
             : 0;
 
-        // Estado real: puede haber vencido desde que se hizo login
         const status = diasRestantes <= 0 ? 'expired' : (info.estado || 'active');
 
         return {
-            licenseKey:  user.tenantId || info.key || '—',
-            plan:        (info.plan || 'TRIAL').toUpperCase(),
+            licenseKey: user.tenantId || info.key || '—',
+            plan:       (info.plan || 'TRIAL').toUpperCase(),
             status,
-            daysLeft:    Math.max(0, diasRestantes),
-            expiresAt:   info.fechaFin
+            daysLeft:   Math.max(0, diasRestantes),
+            expiresAt:  info.fechaFin
         };
     } catch (e) {
         console.warn('Error leyendo licencia de sessionStorage:', e);
@@ -73,56 +71,52 @@ function _buildModal(licenseKey = '—') {
                 </button>
             </div>
 
-            <div class="plans-container">
+            <div class="plans-grid">
 
+                <!-- Trial -->
                 <div class="plan-card disabled">
-                    <div class="plan-info">
-                        <h3>Trial</h3>
-                        <div class="price">$0 <small>MXN</small></div>
-                        <p class="plan-desc">15 días de prueba gratis.</p>
-                        <ul>
-                            <li>3 vehículos incluidos</li>
-                            <li>Rastreo en tiempo real (App móvil)</li>
-                            <li>Reportes y planeación de rutas</li>
-                            <li>Registro de choferes y bases</li>
-                        </ul>
-                    </div>
+                    <span class="soon-badge">Finalizado</span>
+                    <h3 class="plan-name">Trial</h3>
+                    <div class="plan-price">$0 <small>MXN</small></div>
+                    <p class="plan-period">15 días de prueba gratis</p>
+                    <ul class="plan-features">
+                        <li class="ok">3 vehículos incluidos</li>
+                        <li class="ok">Rastreo en tiempo real (App móvil)</li>
+                        <li class="ok">Reportes y planeación de rutas</li>
+                        <li class="ok">Registro de choferes y bases</li>
+                    </ul>
                     <button class="btn-plan" disabled>Finalizado</button>
                 </div>
 
+                <!-- Pro -->
                 <div class="plan-card featured">
-                    <div class="plan-info">
-                        <span class="badge">Recomendado</span>
-                        <h3>Plan Pro</h3>
-                        <div class="price">$199 <small>/mes</small></div>
-                        <p style="font-size: 0.85rem; color: var(--muted); margin-top: -5px; margin-bottom: 10px; font-weight: 500;">o $2,100 / anual</p>
-                        <p class="plan-desc">Soporte prioritario y operaciones sin límites.</p>
-                        <ul>
-                            <li>5 vehículos incluidos</li>
-                            <li>Rastreo en tiempo real (App móvil)</li>
-                            <li>Reportes, rutas, choferes y bases</li>
-                            <li><strong>+ Extra:</strong> $89/mes por vehículo adicional ($1,000/anual)</li>
-                        </ul>
-                    </div>
-                    <button class="btn-plan select-plan featured-btn">
+                    <span class="featured-badge">Recomendado</span>
+                    <h3 class="plan-name">Plan Pro</h3>
+                    <div class="plan-price">$199 <small>/mes</small></div>
+                    <p class="plan-period">o $2,100 / anual</p>
+                    <ul class="plan-features">
+                        <li class="ok">5 vehículos incluidos</li>
+                        <li class="ok">Rastreo en tiempo real (App móvil)</li>
+                        <li class="ok">Reportes, rutas, choferes y bases</li>
+                        <li class="ok">+$89/mes por vehículo adicional</li>
+                    </ul>
+                    <button class="btn-plan btn-whatsapp select-plan">
                         <i class="fa-brands fa-whatsapp"></i> Cotizar por WhatsApp
                     </button>
                 </div>
 
+                <!-- Corporativo -->
                 <div class="plan-card disabled">
-                    <div class="plan-info">
-                        <span class="badge" style="background:#64748b;">Próximamente</span>
-                        <h3>Corporativo</h3>
-                        <div class="price">$399 <small>/mes</small></div>
-                        <p style="font-size: 0.85rem; color: var(--muted); margin-top: -5px; margin-bottom: 10px; font-weight: 500;">o $4,600 / anual</p>
-                        <p class="plan-desc">Métricas a medida para flotas grandes.</p>
-                        <ul>
-                            <li>8 vehículos incluidos</li>
-                            <li>Rastreo vinculación GPS + App</li>
-                            <li>Reportes avanzados (gasolina, KM, alertas, velocidad)</li>
-                            <li><strong>+ Extra:</strong> $89/mes por vehículo adicional</li>
-                        </ul>
-                    </div>
+                    <span class="soon-badge">Próximamente</span>
+                    <h3 class="plan-name">Corporativo</h3>
+                    <div class="plan-price">$399 <small>/mes</small></div>
+                    <p class="plan-period">o $4,600 / anual</p>
+                    <ul class="plan-features">
+                        <li class="ok">8 vehículos incluidos</li>
+                        <li class="ok">Rastreo vinculación GPS + App</li>
+                        <li class="ok">Reportes avanzados</li>
+                        <li class="ok">+$89/mes por vehículo adicional</li>
+                    </ul>
                     <button class="btn-plan" disabled>No disponible</button>
                 </div>
 
@@ -146,22 +140,12 @@ function _buildModal(licenseKey = '—') {
     // Plan Pro → WhatsApp
     overlay.querySelectorAll('.select-plan').forEach(btn => {
         btn.addEventListener('click', () => {
-            const msg = encodeURIComponent('Hola, me interesa activar el Plan Pro de NUMA Tracking. Mi licencia es: ' + licenseKey);
+            const msg = encodeURIComponent(
+                'Hola, me interesa activar el Plan Pro de NUMA Tracking. Mi licencia es: ' + licenseKey
+            );
             window.open(`https://wa.me/523326378746?text=${msg}`, '_blank');
         });
     });
-}
-
-function _handlePlanSelection(planName, btn) {
-    const original = btn.innerHTML;
-    btn.disabled   = true;
-    btn.innerHTML  = '<i class="fa-solid fa-circle-notch fa-spin"></i> Procesando...';
-
-    setTimeout(() => {
-        alert(`Seleccionaste: ${planName}\n\nPronto serás redirigido a la pasarela de pago.`);
-        btn.disabled  = false;
-        btn.innerHTML = original;
-    }, 1200);
 }
 
 // ─── Toast de advertencia ─────────────────────────────────────────────────────
@@ -205,7 +189,6 @@ function _showExpirationWarning(daysLeft) {
 export function checkLicense() {
     const license = _getLicenseData();
 
-    // Sin datos en sesión → dejamos pasar (el login se encarga de guardarlos)
     if (!license) {
         console.warn('⚠️ No hay datos de licencia en sesión.');
         return true;
