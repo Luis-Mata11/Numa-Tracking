@@ -230,12 +230,12 @@ const MapManager = {
                 geodesic:      true,
                 strokeColor:   '#0f1724',
                 strokeOpacity: 0,           // opacidad 0 = invisible (usamos icons para puntos)
-                strokeWeight:  4,
+                strokeWeight:  7,
                 icons: [{
                     icon: {
                         path:         'M 0,-1 0,1',
                         strokeOpacity: 0.85,
-                        strokeWeight:  3,
+                        strokeWeight:  4,
                         strokeColor:  '#0f1724',
                         scale:         4
                     },

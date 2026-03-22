@@ -112,7 +112,8 @@ export function updateCoordsDisplay(lat, lng) {
 
 // ─── KPI Manager ──────────────────────────────────────────────────────────────
 export const KPIManager = {
-    _bound: false,
+    _bound:    false,
+    _builders: {},   // builders actualizados en cada llamada a update()
 
     /** Cierra todos los dropdowns abiertos */
     closeAll() {
@@ -210,8 +211,37 @@ export const KPIManager = {
         set('kpi-alertas',   choferesDisp.length);
         set('kpi-distancia', driversData?.length || 0);
 
-        // Vincular clicks (solo la primera vez para no acumular listeners)
-        const bindKpi = (kpiId, selector, buildItems) => {
+        // Guardar los builders actuales en el KPIManager para que el click
+        // siempre use los datos más recientes (no los del primer render)
+        this._builders = {
+            enCurso:    () => rutasActivas.map(r => ({
+                name:    r.driver?.nombre || r.driver?.name || 'Sin chofer',
+                sub:     `${r.name || 'Ruta'} · ${r.vehicle?.alias || r.vehicle?.placa || 'Sin vehículo'}`,
+                routeId: String(r._id || r.id)
+            })),
+            pendientes: () => rutasActivas
+                .filter(r => r.vehicle && typeof r.vehicle === 'object' && (r.vehicle._id || r.vehicle.id))
+                .map(r => ({
+                    name: r.vehicle?.alias || r.vehicle?.placa || 'Vehículo',
+                    sub:  `En ruta: ${r.name || '—'} · ${r.driver?.nombre || 'Sin chofer'}`,
+                    routeId: String(r._id || r.id)
+                })),
+            choferes:   () => choferesDisp.map(d => ({
+                name:     d.nombre || d.name || 'Chofer',
+                sub:      d.email  || '—',
+                driverId: String(d._id || d.id)
+            })),
+            vehiculos:  () => _vehicles
+                .filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id)))
+                .map(v => ({
+                    name: v.alias || v.placa || 'Vehículo',
+                    sub:  `${v.marca || ''} ${v.modelo || ''}`.trim() || v.placa || '—'
+                }))
+        };
+
+        // Vincular click solo la primera vez — el handler lee _builders en el momento del click
+        const self = this;
+        const bindKpi = (kpiId, selector) => {
             const card = document.querySelector(selector);
             if (!card || card.dataset.kpiBound) return;
             card.dataset.kpi      = kpiId;
@@ -219,43 +249,17 @@ export const KPIManager = {
             card.style.cursor     = 'pointer';
             card.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const isOpen = card.querySelector('.kpi-dropdown')?.classList.contains('open');
-                if (isOpen) { this.closeAll(); return; }
-                this.open(kpiId, buildItems());
+                const drop = document.getElementById(`kpi-drop-${kpiId}`);
+                if (drop?.classList.contains('open')) { self.closeAll(); return; }
+                // ← Siempre llama al builder actual, no al del primer render
+                self.open(kpiId, self._builders[kpiId]?.() || []);
             });
         };
 
-        // Card 1: Choferes en Ruta → lista las rutas activas con su chofer y vehículo
-        bindKpi('enCurso',    '.kpi-card:nth-child(1)', () => rutasActivas.map(r => ({
-            name:    r.driver?.nombre || r.driver?.name || 'Sin chofer',
-            sub:     `${r.name || 'Ruta'} · ${r.vehicle?.alias || r.vehicle?.placa || 'Sin vehículo'}`,
-            routeId: String(r._id || r.id)
-        })));
-
-        // Card 2: Vehículos en Ruta → lista los vehículos ocupados con su ruta asignada
-        bindKpi('pendientes', '.kpi-card:nth-child(2)', () => {
-            const vehs = rutasActivas
-                .filter(r => r.vehicle && typeof r.vehicle === 'object' && (r.vehicle._id || r.vehicle.id))
-                .map(r => ({
-                    name: r.vehicle?.alias || r.vehicle?.placa || 'Vehículo',
-                    sub:  `En ruta: ${r.name || '—'} · ${r.driver?.nombre || 'Sin chofer'}`,
-                    routeId: String(r._id || r.id)
-                }));
-            return vehs;
-        });
-
-        bindKpi('choferes',   '.kpi-card:nth-child(3)', () => choferesDisp.map(d => ({
-            name:     d.nombre || d.name || 'Chofer',
-            sub:      d.email  || '—',
-            driverId: String(d._id || d.id)
-        })));
-
-        bindKpi('vehiculos',  '.kpi-card:nth-child(4)', () => _vehicles
-            .filter(v => !vehicleIdsEnRuta.includes(String(v._id || v.id)))
-            .map(v => ({
-                name: v.alias || v.placa || 'Vehículo',
-                sub:  `${v.marca || ''} ${v.modelo || ''}`.trim() || v.placa || '—'
-            })));
+        bindKpi('enCurso',    '.kpi-card:nth-child(1)');
+        bindKpi('pendientes', '.kpi-card:nth-child(2)');
+        bindKpi('choferes',   '.kpi-card:nth-child(3)');
+        bindKpi('vehiculos',  '.kpi-card:nth-child(4)');
 
         // Listener global de cierre (una sola vez)
         if (!this._bound) {
