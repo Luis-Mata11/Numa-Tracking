@@ -42,11 +42,25 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 function _highlightRoute(selectedId) {
     Object.entries(routePolylines).forEach(([id, polys]) => {
         const sel = id === selectedId;
-        polys.grey?.setOptions({
-            strokeOpacity: sel ? 0.95 : 0.35,
-            strokeWeight:  sel ? 7   : 4,
-            zIndex:        sel ? 10  : 1
-        });
+        // Las líneas punteadas usan icons[], ajustamos opacidad del icono
+        const currentIcons = polys.grey?.get('icons');
+        if (currentIcons?.length) {
+            const updatedIcons = currentIcons.map(ic => ({
+                ...ic,
+                icon: {
+                    ...ic.icon,
+                    strokeOpacity: sel ? 1 : 0.45,
+                    strokeWeight:  sel ? 4 : 2.5
+                }
+            }));
+            polys.grey?.setOptions({ icons: updatedIcons, zIndex: sel ? 10 : 1 });
+        } else {
+            polys.grey?.setOptions({
+                strokeOpacity: sel ? 0.95 : 0.35,
+                strokeWeight:  sel ? 7   : 4,
+                zIndex:        sel ? 10  : 1
+            });
+        }
     });
 }
 
@@ -91,6 +105,11 @@ const FinishModal = {
             window.addNotification?.('Ruta finalizada',
                 `"${data.routeName || data.routeId}" fue finalizada.`,
                 'fa-solid fa-circle-check', '#10b981');
+
+            // Forzar actualización inmediata de KPIs y estado
+            // (no esperamos al socket routeStatusChanged para evitar lag visual)
+            await App.updateAll();
+
         } catch (err) {
             console.error('Error finalizando ruta:', err);
             showToast('Error al finalizar la ruta.', 5000);
@@ -205,12 +224,24 @@ const MapManager = {
 
             if (!pathCoords.length) return;
 
+            // Línea punteada oscura para el trayecto planeado
             const greyLine = new window.google.maps.Polyline({
                 path:          pathCoords,
                 geodesic:      true,
-                strokeColor:   routeColor,
-                strokeOpacity: 0.6,
+                strokeColor:   '#0f1724',
+                strokeOpacity: 0,           // opacidad 0 = invisible (usamos icons para puntos)
                 strokeWeight:  4,
+                icons: [{
+                    icon: {
+                        path:         'M 0,-1 0,1',
+                        strokeOpacity: 0.85,
+                        strokeWeight:  3,
+                        strokeColor:  '#0f1724',
+                        scale:         4
+                    },
+                    offset: '0',
+                    repeat: '16px'
+                }],
                 map,
                 zIndex:        1,
                 clickable:     true
