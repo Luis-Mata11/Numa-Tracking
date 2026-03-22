@@ -163,38 +163,38 @@ const MapManager = {
     },
 
 
-    async drawRoutes(routesData) {
+      async drawRoutes(routesData) {
         // Limpiar rutas previas: polilíneas Y marcadores estáticos
         Object.values(routePolylines).forEach(({ grey, color }) => {
             grey?.setMap(null);
             color?.setMap(null);
         });
         routePolylines = {};
-
+ 
         // Limpiar marcadores estáticos (inicio, paradas, destino, infowindows)
         Object.values(routeStaticMarkers).forEach(marks => {
             marks.forEach(i => { i.setMap?.(null); i.close?.(); });
         });
         routeStaticMarkers = {};
-
+ 
         // Limpiar marcadores de vehículos (se recrearán con locationUpdate)
         Object.values(driverMarkers).forEach(m => m.setMap(null));
         driverMarkers = {};
-
+ 
         // Usamos encodedPolyline si está disponible, fallback a waypoints
         const activas = routesData.filter(r =>
             ['en curso', 'active'].includes(r.estado || r.status)
         );
         if (!activas.length) return;
-
+ 
         const bounds = new window.google.maps.LatLngBounds();
-
+ 
         activas.forEach(route => {
-            const routeId = String(route._id || route.id);
+            const routeId    = String(route._id || route.id);
             const routeColor = route.color || '#f357a1';
-
+ 
             let pathCoords = [];
-
+ 
             if (route.trayecto?.encodedPolyline) {
                 pathCoords = window.google.maps.geometry.encoding
                     .decodePath(route.trayecto.encodedPolyline)
@@ -205,45 +205,45 @@ const MapManager = {
                     lng: parseFloat(wp.lng)
                 }));
             }
-
+ 
             if (!pathCoords.length) return;
-
+ 
             const greyLine = new window.google.maps.Polyline({
-                path: pathCoords,
-                geodesic: true,
-                strokeColor: routeColor,
+                path:          pathCoords,
+                geodesic:      true,
+                strokeColor:   routeColor,
                 strokeOpacity: 0.6,
-                strokeWeight: 4,
+                strokeWeight:  4,
                 map,
-                zIndex: 1,
-                clickable: true
+                zIndex:        1,
+                clickable:     true
             });
-
+ 
             // Click en polilínea → actualiza info panel (desde dashboard.ui.js)
             greyLine.addListener('click', () => {
                 activeRouteId = routeId;
                 updateInfoPanel(route);
             });
-
+ 
             const colorLine = new window.google.maps.Polyline({
                 path: [], geodesic: true,
                 strokeColor: routeColor, strokeOpacity: 1.0, strokeWeight: 6,
                 map, zIndex: 2
             });
-
+ 
             // ── Marcadores de origen, destino y paradas ───────────────────────
             // Se guardan en routeStaticMarkers para poder limpiarlos al finalizar la ruta
             const staticMarks = [];
-
+ 
             const ico = (color) => ({
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 7,
-                fillColor: color,
-                fillOpacity: 1,
+                path:         window.google.maps.SymbolPath.CIRCLE,
+                scale:        7,
+                fillColor:    color,
+                fillOpacity:  1,
                 strokeWeight: 2,
-                strokeColor: '#FFFFFF'
+                strokeColor:  '#FFFFFF'
             });
-
+ 
             if (route.trayecto?.origin) {
                 staticMarks.push(new window.google.maps.Marker({
                     position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
@@ -261,17 +261,17 @@ const MapManager = {
                     position: { lat: wp.lat, lng: wp.lng },
                     map,
                     icon: {
-                        path: window.google.maps.SymbolPath.CIRCLE,
-                        scale: 5,
-                        fillColor: '#FFC107',
-                        fillOpacity: 1,
+                        path:         window.google.maps.SymbolPath.CIRCLE,
+                        scale:        5,
+                        fillColor:    '#FFC107',
+                        fillOpacity:  1,
                         strokeWeight: 1,
-                        strokeColor: '#000000'
+                        strokeColor:  '#000000'
                     },
                     title: `Parada ${i + 1}`, zIndex: 4
                 }));
             });
-
+ 
             // InfoWindow con nombre y chofer
             if (route.trayecto?.origin) {
                 const iw = new window.google.maps.InfoWindow({
@@ -283,27 +283,27 @@ const MapManager = {
                                 <span class="route-driver">(${route.driver?.nombre || 'Sin chofer'})</span>
                             </span>
                         </div>`,
-                    position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
+                    position:       { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
                     disableAutoPan: true,
-                    pixelOffset: new window.google.maps.Size(0, -10)
+                    pixelOffset:    new window.google.maps.Size(0, -10)
                 });
                 iw.open(map);
                 staticMarks.push(iw);
             }
-
+ 
             // Guardar referencias para limpieza al finalizar
             routeStaticMarkers[routeId] = staticMarks;
-
+ 
             routePolylines[routeId] = {
                 grey: greyLine, color: colorLine,
                 fullPath: pathCoords, routeData: route
             };
             pathCoords.forEach(p => bounds.extend(p));
         });
-
+ 
         if (!bounds.isEmpty()) map.fitBounds(bounds);
     },
-
+ 
     clearRoute(routeId, driverId) {
         if (routePolylines[routeId]) {
             routePolylines[routeId].grey?.setMap(null);
@@ -468,89 +468,7 @@ export async function init() {
 }
 
 // ─── Dibujar rutas activas con trayecto guardado ──────────────────────────────
-export async function drawActiveRoutesOnMap(mapInstance) {
-    if (!window.google?.maps || !mapInstance) return;
 
-    try {
-        const activeRoutes = (await fetchRoutes()).filter(r => r.status === 'active');
-
-        activeRoutes.forEach(route => {
-            if (!route.trayecto?.encodedPolyline) return;
-
-            const routeId = String(route._id || route.id);
-            const marks = [];
-
-            // Polilínea planeada (gris, clicable)
-            const decoded = window.google.maps.geometry.encoding.decodePath(
-                route.trayecto.encodedPolyline
-            );
-            const plannedLine = new window.google.maps.Polyline({
-                path: decoded, geodesic: true,
-                strokeColor: '#808080', strokeOpacity: 0.7, strokeWeight: 4,
-                map: mapInstance, zIndex: 1, clickable: true
-            });
-            plannedLine.addListener('click', () => {
-                activeRouteId = routeId;
-                updateInfoPanel(route);
-            });
-            marks.push(plannedLine);
-
-            // Polilínea de recorrido real (azul)
-            const realLine = new window.google.maps.Polyline({
-                path: (route.recorridoReal || []).map(p => ({
-                    lat: parseFloat(p.lat), lng: parseFloat(p.lng)
-                })),
-                geodesic: true, strokeColor: '#007BFF', strokeOpacity: 1.0, strokeWeight: 5,
-                map: mapInstance, zIndex: 2
-            });
-            const did = typeof route.driver === 'object'
-                ? (route.driver._id || route.driver.id)
-                : route.driver;
-            if (did) actualPathPolylines[String(did)] = realLine;
-
-            // Marcadores inicio / destino
-            const ico = (c) => ({
-                path: window.google.maps.SymbolPath.CIRCLE,
-                scale: 6, fillColor: c, fillOpacity: 1, strokeWeight: 2, strokeColor: '#FFF'
-            });
-            marks.push(
-                new window.google.maps.Marker({ position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng }, map: mapInstance, icon: ico('#4CAF50'), title: 'Inicio' }),
-                new window.google.maps.Marker({ position: { lat: route.trayecto.destination.lat, lng: route.trayecto.destination.lng }, map: mapInstance, icon: ico('#F44336'), title: 'Destino' })
-            );
-
-            // Waypoints
-            (route.trayecto.waypoints || []).forEach((wp, i) => {
-                marks.push(new window.google.maps.Marker({
-                    position: { lat: wp.lat, lng: wp.lng }, map: mapInstance,
-                    icon: { path: window.google.maps.SymbolPath.CIRCLE, scale: 4, fillColor: '#FFC107', fillOpacity: 1, strokeWeight: 1, strokeColor: '#000' },
-                    title: `Parada ${i + 1}`
-                }));
-            });
-
-            // InfoWindow con nombre y chofer
-            const iw = new window.google.maps.InfoWindow({
-                content: `
-                    <div class="route-tag" style="--dot-color:${route.color || '#0056b3'};">
-                        <span class="route-dot"></span>
-                        <span class="route-text">
-                            <span class="route-name">${route.name}</span>
-                            <span class="route-driver">(${route.driver?.nombre || 'Sin chofer'})</span>
-                        </span>
-                    </div>`,
-                position: { lat: route.trayecto.origin.lat, lng: route.trayecto.origin.lng },
-                disableAutoPan: true,
-                pixelOffset: new window.google.maps.Size(0, -10)
-            });
-            iw.open(mapInstance);
-            marks.push(iw);
-
-            routeStaticMarkers[routeId] = marks;
-        });
-
-    } catch (error) {
-        console.error('No se pudieron dibujar las rutas activas:', error);
-    }
-}
 
 // ─── Cleanup al salir ─────────────────────────────────────────────────────────
 export function cleanup() {
