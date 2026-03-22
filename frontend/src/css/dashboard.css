@@ -1,18 +1,69 @@
 /* CSS */
+/* Estilos para el contenedor principal */
 
-header img{
-  width: 56px;
-  height: 56px;
+/* Heredamos tus variables de estilos originales */
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --muted: #64748b;
+  --text: #0f1724;
+  --sidebar-bg: linear-gradient(180deg, #0b1228 0%, #0f1b36 100%);
+  --accent: #6c8cff;
+  --accent-2: #4a6ee0;
+  --shadow: 0 6px 18px rgba(12, 20, 33, 0.08);
+  --radius-lg: 14px;
 }
-.logo-container{
+
+.logo-container {
   display: flex;
-  gap: 15px;
-  align-items: center;
-  background-color: #0b1228;
-  padding: 5px 10px;
+  gap: 15px; /* Espacio horizontal entre el logo y el texto */
+  align-items: center; /* Centra verticalmente el logo con el texto */
+  background: var(--sidebar-bg); /* Gradiente oscuro original */
+  padding: 15px 20px; /* Un poco más de padding para que respire */
   color: #fff;
-  border-radius: 10px;
+  border-radius: var(--radius-lg); /* Bordes redondeados originales */
+  max-width: max-content; /* El contenedor se ajusta al contenido */
 }
+
+/* Estilos para la imagen del logo */
+.logo-container img {
+  width: 50px; /* Ajuste ligero de tamaño para que encaje mejor */
+  height: 50px;
+  object-fit: contain; /* Asegura que el logo no se deforme */
+}
+
+/* Estilos para el contenedor de texto */
+.text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Pequeño espacio vertical entre h1 y p */
+}
+
+/* Estilos para el título h1 */
+.logo-container h1 {
+  margin: 0;
+  font-size: 1.25rem; /* Tamaño del título */
+  line-height: 1.2;
+}
+
+/* Clases específicas para NUMA (Negrita) y Tracking (Delgada) */
+.logo-container h1 .bold {
+  font-weight: 800; /* Letra muy gruesa para NUMA */
+}
+
+.logo-container h1 .thin {
+  font-weight: 300; /* Letra muy delgada para TRACKING */
+  color: rgba(255, 255, 255, 0.9); /* Ligeramente más opaco para dar sensación de delgadez */
+}
+
+/* Estilos para el párrafo sutil */
+.logo-container p.muted {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7); /* Color blanco-grisáceo sutil */
+  font-weight: 400;
+}
+
 
 .route-tag{
   display: inline-flex;
