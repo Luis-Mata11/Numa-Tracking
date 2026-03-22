@@ -1,4 +1,19 @@
 /* CSS */
+
+header img{
+  width: 56px;
+  height: 56px;
+}
+.logo-container{
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  background-color: #0b1228;
+  padding: 5px 10px;
+  color: #fff;
+  border-radius: 10px;
+}
+
 .route-tag{
   display: inline-flex;
   align-items: center;
