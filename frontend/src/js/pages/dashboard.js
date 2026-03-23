@@ -374,7 +374,7 @@ const SocketManager = {
                 driverMarkers[data.driverId] = new window.google.maps.Marker({
                     position: pos, map, title: 'Vehículo en movimiento',
                     icon: {
-                        url:        '/assets/car.svg',
+                        url:        '/assets/NUMACAR.svg',
                         scaledSize: new window.google.maps.Size(36, 36),
                         anchor:     new window.google.maps.Point(18, 18)
                     },
