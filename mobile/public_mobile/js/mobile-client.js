@@ -48,7 +48,7 @@
             fontFamily: 'system-ui, sans-serif'
         });
         overlay.innerHTML = `
-            <img src="./img/logo.png" alt="Finalización" style="width:96px;height:96px;margin-bottom:20px;">
+            <img src="/img/logo.png" alt="Finalización" style="width:96px;height:96px;margin-bottom:20px;">
             <h2 style="margin:0;padding:0 20px;font-size:24px;">${message}</h2>
             <p style="margin-top:10px;font-size:16px;opacity:.8;">Serás redirigido en unos segundos...</p>`;
         document.body.appendChild(overlay);
@@ -68,6 +68,15 @@
             sessionStorage.clear();
             window.location.href = 'mobile-login.html';
         }, 3500);
+    }
+
+    function handleCancellation() {
+        stopTracking();
+        showFinalizationOverlay('La ruta ha sido cancelada. Contacta con el administrador.');
+        setTimeout(() => {
+            sessionStorage.clear();
+            window.location.href = 'mobile-login.html';
+        }, 4500);
     }
 
     function updateStatusUI(newStatus) {
@@ -280,9 +289,14 @@
         if (nuevoEstado) {
             currentRoute.estado = nuevoEstado;
             updateStatusUI(nuevoEstado);
-            showToast(`Estado: ${nuevoEstado}`);
-            if (nuevoEstado === 'finalizada' || nuevoEstado === 'completed')
+
+            if (nuevoEstado === 'finalizada' || nuevoEstado === 'completed') {
                 handleFinalization();
+            } else if (nuevoEstado === 'cancelada' || nuevoEstado === 'cancelled') {
+                handleCancellation();
+            } else {
+                showToast(`Estado: ${nuevoEstado}`);
+            }
         }
     });
 
@@ -411,16 +425,23 @@
     }
 
     if (btnFinishRoute) {
+        let _finishRequested = false; // evita doble disparo
         btnFinishRoute.addEventListener('click', () => {
-            if (confirm('¿Seguro que quieres solicitar la finalización?')) {
-                socket.emit('requestFinishRoute', {
-                    routeId:   currentRoute.id,
-                    driverId:  currentDriver?._id || currentDriver?.id || null,
-                    routeName: currentRoute.name
-                });
-                showToast('Solicitud enviada al administrador.');
-                btnFinishRoute.disabled = true;
-            }
+            if (_finishRequested) return;
+
+            // Modal de confirmación inline (evita el doble confirm() nativo)
+            const confirmed = window.confirm('¿Seguro que quieres solicitar la finalización?');
+            if (!confirmed) return;
+
+            _finishRequested = true;
+            btnFinishRoute.disabled = true;
+
+            socket.emit('requestFinishRoute', {
+                routeId:   currentRoute.id,
+                driverId:  currentDriver?._id || currentDriver?.id || null,
+                routeName: currentRoute.name
+            });
+            showToast('Solicitud enviada al administrador.', 3000);
         });
     }
 
