@@ -2,37 +2,34 @@
     const socket = io();
 
     // --- Constantes ---
-    const DEVIATION_TOLERANCE = 80; // metros
-    const MOVEMENT_THRESHOLD  = 10; // metros mínimos para dibujar segmento
+    const DEVIATION_TOLERANCE = 80;
+    const MOVEMENT_THRESHOLD  = 10;
 
     // --- Referencias al DOM ---
-    const routeNameEl      = document.getElementById('route-name');
-    const driverNameEl     = document.getElementById('driver-name');
-    const driverStatusEl   = document.getElementById('driver-status');
-    const driverStatusTextEl = document.getElementById('driver-status-text');
-    const routeStatusEl    = document.getElementById('route-status');
-    const topSubEl         = document.getElementById('top-sub');
-    const coordsEl         = document.getElementById('coords');
-    const btnCenter        = document.getElementById('btn-center');
-    const btnZoom          = document.getElementById('btn-zoom');
-    const btnFinishRoute   = document.getElementById('btn-finish-route');
-    const fab              = document.getElementById('fab-mypos');
-    const toast            = document.getElementById('toast');
+    const routeNameEl    = document.getElementById('route-name');
+    const driverNameEl   = document.getElementById('driver-name');
+    const routeStatusEl  = document.getElementById('route-status');
+    const topSubEl       = document.getElementById('top-sub');
+    const coordsEl       = document.getElementById('coords');
+    const btnCenter      = document.getElementById('btn-center');
+    const btnZoom        = document.getElementById('btn-zoom');
+    const btnFinishRoute = document.getElementById('btn-finish-route');
+    const fab            = document.getElementById('fab-mypos');
+    const toast          = document.getElementById('toast');
 
-    let isAutoPanActive = true;
-
-    // --- Estado de la App ---
-    let currentRoute    = null;
-    let currentDriver   = null;
-    let map             = null;
-    let driverMarker    = null;
-    let decodedRoutePath = [];
-    let progressSegments = [];
+    // --- Estado ---
+    let currentRoute      = null;
+    let currentDriver     = null;
+    let map               = null;
+    let driverMarker      = null;
+    let progressPolylines = [];
     let lastDrawnPosition = null;
-    let watchId         = null;
-    let routeBounds     = null;
+    let watchId           = null;
+    let isAutoPanActive   = true;
+    let routeBounds       = null;
+    let decodedRoutePath  = []; // puntos del encodedPolyline para detección de desvíos
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     function showToast(text, ms = 2000) {
         if (!toast) return;
@@ -51,7 +48,7 @@
             fontFamily: 'system-ui, sans-serif'
         });
         overlay.innerHTML = `
-            <img src="/img/logo.png" alt="Finalización" style="width:96px;height:96px;margin-bottom:20px;">
+            <img src="./img/logo.png" alt="Finalización" style="width:96px;height:96px;margin-bottom:20px;">
             <h2 style="margin:0;padding:0 20px;font-size:24px;">${message}</h2>
             <p style="margin-top:10px;font-size:16px;opacity:.8;">Serás redirigido en unos segundos...</p>`;
         document.body.appendChild(overlay);
@@ -61,7 +58,6 @@
         if (watchId && navigator.geolocation) {
             navigator.geolocation.clearWatch(watchId);
             watchId = null;
-            console.log('🛑 Rastreo GPS detenido.');
         }
     }
 
@@ -92,25 +88,23 @@
             btnFinishRoute.disabled = !(newStatus === 'en curso' || newStatus === 'active');
     }
 
-    function updateDriverStatus(isOnline) {
-        if (!driverStatusEl) return;
-        const color = isOnline ? '#2ecc71' : '#e74c3c';
-        const text  = isOnline ? 'Chofer en línea, listo para iniciar' : 'Desconectado';
-        driverStatusEl.innerHTML = `
-            <i class="fa-solid fa-circle" style="color:${color};margin-right:5px;"></i>
-            <span id="driver-status-text">${text}</span>`;
+    // Haversine local — no depende de Google geometry
+    function distMeters(lat1, lng1, lat2, lng2) {
+        const R    = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a    = Math.sin(dLat/2)**2 +
+                     Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+                     Math.sin(dLng/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     // ── Inicialización de sesión ──────────────────────────────────────────────
 
     try {
         currentRoute = JSON.parse(sessionStorage.getItem('currentRoute'));
-        console.log('🕵️ Datos de sesión:', currentRoute);
-
-        // Normalizar ID
         if (currentRoute && !currentRoute.id && currentRoute._id)
             currentRoute.id = currentRoute._id;
-
         currentDriver = JSON.parse(sessionStorage.getItem('currentDriver'));
     } catch (e) { /* fallo silencioso */ }
 
@@ -121,74 +115,115 @@
     }
 
     if (routeNameEl) routeNameEl.textContent = currentRoute.name || '—';
-    // 🔧 FIX: el campo en Driver.js es 'nombre', no 'name'
     if (driverNameEl) driverNameEl.textContent = currentDriver?.nombre || currentDriver?.name || '—';
-    updateStatusUI(currentRoute.estado || currentRoute.status);
+    updateStatusUI(currentRoute.status || currentRoute.estado);
 
-    // ── Mapa ─────────────────────────────────────────────────────────────────
+    // ── Mapa ──────────────────────────────────────────────────────────────────
 
     function initMap() {
         if (!currentRoute) return;
 
-        // Origen desde trayecto (estructura actual del API)
         const trayecto = currentRoute.trayecto || {};
+
         const initialCenter = trayecto.origin
             ? { lat: trayecto.origin.lat, lng: trayecto.origin.lng }
             : { lat: 19.7677724, lng: -104.3686507 };
 
         map = new google.maps.Map(document.getElementById('map'), {
-            zoom: 16,
-            center: initialCenter,
-            draggable: true,
+            zoom:              16,
+            center:            initialCenter,
+            draggable:         true,
             fullscreenControl: false,
-            mapTypeControl: false,
-            scaleControl: true,
+            mapTypeControl:    false,
+            scaleControl:      true,
             streetViewControl: false,
-            rotateControl: false,
-            zoomControl: true
+            rotateControl:     false,
+            zoomControl:       true
         });
 
         routeBounds = new google.maps.LatLngBounds();
 
-        if (trayecto.encodedPolyline) {
-            // ── Ruta con trazo guardado ──────────────────────────────────────
-            decodedRoutePath = google.maps.geometry.encoding.decodePath(trayecto.encodedPolyline);
+        // Helper: ícono de círculo coloreado
+        const ico = (fillColor, scale = 7) => ({
+            path:         google.maps.SymbolPath.CIRCLE,
+            scale,
+            fillColor,
+            fillOpacity:  1,
+            strokeWeight: 2,
+            strokeColor:  '#FFFFFF'
+        });
+
+        // ── A) encodedPolyline → trazo exacto (línea punteada oscura) ─────
+        // SIEMPRE usar encodedPolyline si existe — es el trazo real guardado.
+        // Nunca usar DirectionsService aquí para evitar que Google reemplace
+        // la ruta planeada por la óptima calculada en tiempo real.
+        if (trayecto.encodedPolyline && google.maps.geometry?.encoding) {
+            decodedRoutePath = google.maps.geometry.encoding.decodePath(
+                trayecto.encodedPolyline
+            );
 
             new google.maps.Polyline({
-                path: decodedRoutePath,
-                geodesic: true,
-                strokeColor: '#808080',
-                strokeOpacity: 0.8,
-                strokeWeight: 5,
-                map: map
+                path:          decodedRoutePath,
+                geodesic:      true,
+                strokeColor:   '#0f1724',
+                strokeOpacity: 0,
+                strokeWeight:  4,
+                icons: [{
+                    icon: {
+                        path:          'M 0,-1 0,1',
+                        strokeOpacity: 0.85,
+                        strokeWeight:  3,
+                        strokeColor:   '#0f1724',
+                        scale:         4
+                    },
+                    offset: '0',
+                    repeat: '16px'
+                }],
+                map
             });
 
             decodedRoutePath.forEach(c => routeBounds.extend(c));
-
-            if (trayecto.origin) {
-                new google.maps.Marker({
-                    position: trayecto.origin,
-                    map: map,
-                    title: 'Inicio',
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: '#4CAF50', fillOpacity: 1, strokeWeight: 2, strokeColor: '#fff' }
-                });
-            }
-            if (trayecto.destination) {
-                new google.maps.Marker({
-                    position: trayecto.destination,
-                    map: map,
-                    title: 'Destino',
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 6, fillColor: '#F44336', fillOpacity: 1, strokeWeight: 2, strokeColor: '#fff' }
-                });
-            }
-
-        } else if (currentRoute.isTraceFree && trayecto.origin && trayecto.destination) {
-            // ── Ruta sin trazo: solo inicio y fin ────────────────────────────
-            const sm = new google.maps.Marker({ position: trayecto.origin,      map, title: 'Inicio', icon: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png' });
-            const em = new google.maps.Marker({ position: trayecto.destination, map, title: 'Fin',    icon: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'   });
-            routeBounds.extend(sm.getPosition());
-            routeBounds.extend(em.getPosition());
         }
+
+        // ── B) Marcador INICIO ────────────────────────────────────────────
+        if (trayecto.origin) {
+            new google.maps.Marker({
+                position: { lat: trayecto.origin.lat, lng: trayecto.origin.lng },
+                map,
+                title:  'Inicio',
+                icon:   ico('#4CAF50'),
+                zIndex: 5
+            });
+            routeBounds.extend(
+                new google.maps.LatLng(trayecto.origin.lat, trayecto.origin.lng)
+            );
+        }
+
+        // ── C) Marcador DESTINO ───────────────────────────────────────────
+        if (trayecto.destination) {
+            new google.maps.Marker({
+                position: { lat: trayecto.destination.lat, lng: trayecto.destination.lng },
+                map,
+                title:  'Destino',
+                icon:   ico('#F44336'),
+                zIndex: 5
+            });
+            routeBounds.extend(
+                new google.maps.LatLng(trayecto.destination.lat, trayecto.destination.lng)
+            );
+        }
+
+        // ── D) Marcadores PARADAS (waypoints) ─────────────────────────────
+        (trayecto.waypoints || []).forEach((wp, i) => {
+            new google.maps.Marker({
+                position: { lat: wp.lat, lng: wp.lng },
+                map,
+                title:  `Parada ${i + 1}`,
+                icon:   ico('#FFC107', 5),
+                zIndex: 4
+            });
+            routeBounds.extend(new google.maps.LatLng(wp.lat, wp.lng));
+        });
 
         if (!routeBounds.isEmpty()) map.fitBounds(routeBounds, 50);
 
@@ -197,31 +232,24 @@
             if (fab) fab.classList.add('inactive');
             showToast('Auto-enfoque desactivado. Presiona 📍 para reactivar.', 2500);
         });
-
-        // 🔧 FIX: NO llamamos startTracking() aquí.
-        //    window.initMap (más abajo) lo llama después de initMap(),
-        //    por lo que hacerlo aquí generaba DOBLE TRACKING.
     }
 
     // ── Sockets ───────────────────────────────────────────────────────────────
 
     socket.on('connect', () => {
         showToast('Conectado al servidor');
-        updateDriverStatus(true);
         socket.emit('joinRoute', {
             routeId:  currentRoute.id,
-            // 🔧 FIX: enviar el _id de MongoDB (ObjectId), no el ID de empleado
             driverId: currentDriver?._id || currentDriver?.id || null
         });
     });
 
-    socket.on('disconnect', () => updateDriverStatus(false));
+    socket.on('disconnect', () => {
+        if (routeStatusEl) routeStatusEl.textContent = 'Sin conexión';
+    });
 
-    // Ruta iniciada por el admin
     socket.on('routeStarted', (data) => {
-        console.log('🔥 routeStarted recibido:', data);
         if (!data || !currentRoute) return;
-
         const serverRouteId = String(data.routeId || data.route?._id || data._id || data.id);
         const clientRouteId = String(currentRoute.id || currentRoute._id);
 
@@ -234,7 +262,6 @@
         }
     });
 
-    // Cambio de estado genérico
     socket.on('routeStatusChanged', (payload) => {
         if (!payload || !currentRoute) return;
 
@@ -243,10 +270,9 @@
             payload.route?.id || payload.route?._id
         );
         const clientRouteId = String(currentRoute.id || currentRoute._id);
-
         if (serverRouteId !== clientRouteId) return;
 
-        const routeData  = payload.route || payload;
+        const routeData   = payload.route || payload;
         const nuevoEstado = payload.estado || routeData.estado || payload.status || routeData.status;
 
         currentRoute = Object.assign({}, currentRoute, routeData);
@@ -255,54 +281,52 @@
             currentRoute.estado = nuevoEstado;
             updateStatusUI(nuevoEstado);
             showToast(`Estado: ${nuevoEstado}`);
-
-            if (nuevoEstado === 'finalizada' || nuevoEstado === 'completed') {
+            if (nuevoEstado === 'finalizada' || nuevoEstado === 'completed')
                 handleFinalization();
-            }
         }
     });
 
-    // Orden directa de finalización
-    socket.on('routeFinalized', () => {
-        console.log('🏁 routeFinalized recibido del admin');
-        handleFinalization();
-    });
+    socket.on('routeFinalized', () => handleFinalization());
 
     // ── Rastreo GPS ───────────────────────────────────────────────────────────
 
     function startTracking() {
         if (!('geolocation' in navigator)) {
-            showToast('GPS no disponible en este dispositivo.', 3000);
+            showToast('GPS no disponible.', 3000);
             return;
         }
 
-        const trayecto = currentRoute.trayecto || {};
+        const trayecto  = currentRoute.trayecto || {};
+        const waypoints = trayecto.waypoints    || [];
 
         watchId = navigator.geolocation.watchPosition((pos) => {
             const { latitude: lat, longitude: lng, accuracy, heading } = pos.coords;
             const currentPosition = new google.maps.LatLng(lat, lng);
 
-            if (coordsEl) coordsEl.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)} m)`;
+            if (coordsEl) coordsEl.textContent =
+                `${lat.toFixed(6)}, ${lng.toFixed(6)} (±${Math.round(accuracy)} m)`;
 
-            // Marcador del chofer
+            // Marcador del vehículo con flecha direccional
             if (!driverMarker) {
                 driverMarker = new google.maps.Marker({
                     position: currentPosition,
-                    map: map,
+                    map,
+                    title: 'Tu posición',
                     icon: {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        scale: 5,
-                        fillColor: '#4285F4',
-                        fillOpacity: 1,
+                        path:         google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale:        5,
+                        fillColor:    '#4285F4',
+                        fillOpacity:  1,
                         strokeWeight: 2,
-                        strokeColor: '#FFFFFF',
-                        rotation: heading || 0
-                    }
+                        strokeColor:  '#FFFFFF',
+                        rotation:     heading || 0
+                    },
+                    zIndex: 10
                 });
             } else {
                 driverMarker.setPosition(currentPosition);
                 if (heading !== null && !isNaN(heading)) {
-                    const icon = driverMarker.getIcon();
+                    const icon    = driverMarker.getIcon();
                     icon.rotation = heading;
                     driverMarker.setIcon(icon);
                 }
@@ -310,44 +334,53 @@
 
             if (isAutoPanActive && map) map.panTo(currentPosition);
 
-            // Calcular desvío usando decodedRoutePath o fallback al origen
+            // Detección de desvío
+            // Preferimos decodedRoutePath (denso) sobre waypoints individuales
             let minDistance = Infinity;
             if (decodedRoutePath.length > 0) {
                 decodedRoutePath.forEach(point => {
-                    const d = google.maps.geometry.spherical.computeDistanceBetween(currentPosition, point);
+                    const d = distMeters(lat, lng, point.lat(), point.lng());
+                    if (d < minDistance) minDistance = d;
+                });
+            } else if (waypoints.length > 0) {
+                waypoints.forEach(wp => {
+                    const d = distMeters(lat, lng, wp.lat, wp.lng);
                     if (d < minDistance) minDistance = d;
                 });
             } else if (trayecto.origin) {
-                minDistance = google.maps.geometry.spherical.computeDistanceBetween(
-                    currentPosition,
-                    new google.maps.LatLng(trayecto.origin.lat, trayecto.origin.lng)
-                );
+                minDistance = distMeters(lat, lng, trayecto.origin.lat, trayecto.origin.lng);
             }
             const isOffRoute = minDistance > DEVIATION_TOLERANCE;
 
-            // 🔧 FIX: driverId usa _id (ObjectId de MongoDB) para que RecorridoReal lo guarde correctamente
             socket.emit('driverLocation', {
                 lat, lng, accuracy,
-                speed:      pos.coords.speed   || null,
-                heading:    heading            || null,
+                speed:     pos.coords.speed || null,
+                heading:   heading          || null,
                 isOffRoute,
-                timestamp:  pos.timestamp      || Date.now(),
-                driverId:   currentDriver?._id || currentDriver?.id || null,
-                routeId:    currentRoute.id
+                timestamp: pos.timestamp    || Date.now(),
+                driverId:  currentDriver?._id || currentDriver?.id || null,
+                routeId:   currentRoute.id
             });
 
-            // Dibujar segmento de progreso
-            if (!lastDrawnPosition) { lastDrawnPosition = currentPosition; return; }
+            // Dibujar segmento de progreso (azul normal, rojo si desvío)
+            if (!lastDrawnPosition) {
+                lastDrawnPosition = currentPosition;
+                return;
+            }
 
-            const distFromLast = google.maps.geometry.spherical.computeDistanceBetween(lastDrawnPosition, currentPosition);
+            const distFromLast = distMeters(
+                lastDrawnPosition.lat(), lastDrawnPosition.lng(), lat, lng
+            );
             if (distFromLast < MOVEMENT_THRESHOLD) return;
 
-            const segmentColor = isOffRoute ? '#e74c3c' : (currentRoute.color || '#f357a1');
-            progressSegments.push(new google.maps.Polyline({
-                path: [lastDrawnPosition, currentPosition],
-                strokeColor: segmentColor,
-                strokeWeight: 7,
-                map: map
+            const segmentColor = isOffRoute ? '#e74c3c' : '#1A73E8';
+            progressPolylines.push(new google.maps.Polyline({
+                path:          [lastDrawnPosition, currentPosition],
+                geodesic:      true,
+                strokeColor:   segmentColor,
+                strokeOpacity: 0.9,
+                strokeWeight:  6,
+                map
             }));
             lastDrawnPosition = currentPosition;
 
@@ -359,12 +392,16 @@
 
     // ── Botones ───────────────────────────────────────────────────────────────
 
-    if (btnCenter) btnCenter.addEventListener('click', () => driverMarker && map.panTo(driverMarker.getPosition()));
-    if (btnZoom)   btnZoom.addEventListener('click',   () => !routeBounds.isEmpty() && map.fitBounds(routeBounds, 50));
+    if (btnCenter) btnCenter.addEventListener('click', () => {
+        if (driverMarker && map) map.panTo(driverMarker.getPosition());
+    });
+    if (btnZoom) btnZoom.addEventListener('click', () => {
+        if (map && routeBounds && !routeBounds.isEmpty()) map.fitBounds(routeBounds, 50);
+    });
 
     if (fab) {
         fab.addEventListener('click', () => {
-            if (driverMarker) {
+            if (driverMarker && map) {
                 map.panTo(driverMarker.getPosition());
                 isAutoPanActive = true;
                 fab.classList.remove('inactive');
@@ -375,21 +412,19 @@
 
     if (btnFinishRoute) {
         btnFinishRoute.addEventListener('click', () => {
-            if (confirm('¿Seguro que quieres solicitar la finalización de esta ruta?')) {
+            if (confirm('¿Seguro que quieres solicitar la finalización?')) {
                 socket.emit('requestFinishRoute', {
-                    routeId:    currentRoute.id,
-                    driverId:   currentDriver?._id || currentDriver?.id || null,
-                    routeName:  currentRoute.name
+                    routeId:   currentRoute.id,
+                    driverId:  currentDriver?._id || currentDriver?.id || null,
+                    routeName: currentRoute.name
                 });
                 showToast('Solicitud enviada al administrador.');
-                btnFinishRoute.disabled = true; // Evitar doble envío
+                btnFinishRoute.disabled = true;
             }
         });
     }
 
-    // ── window.initMap — callback de Google Maps ──────────────────────────────
-    // Google Maps llama a esta función cuando termina de cargar.
-    // Aquí es el ÚNICO lugar donde iniciamos tracking para evitar el doble registro.
+    // ── window.initMap — único punto de arranque ──────────────────────────────
     window.initMap = function () {
         initMap();
         try { startTracking(); } catch (e) { console.error('Error iniciando tracking:', e); }
