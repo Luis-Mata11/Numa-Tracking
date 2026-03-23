@@ -376,7 +376,7 @@ const SocketManager = {
                     icon: {
                         url:        '/assets/NUMACAR.svg',
                         scaledSize: new window.google.maps.Size(64, 64),
-                        anchor:     new window.google.maps.Point(18, 18)
+                        anchor:     new window.google.maps.Point(64, 64)
                     },
                     zIndex: 999
                 });
