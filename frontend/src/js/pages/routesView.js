@@ -362,35 +362,45 @@ export function openRoutePanel(route = null) {
     }, 300);
 }
 
+
 async function handleFormSubmit(e) {
     e.preventDefault();
     const form = e.target;
-
+    const editingId = form.dataset.editingId;
+ 
     const trayectoData = getRouteDataForDB();
-
-    if (!trayectoData) {
+ 
+    // En modo CREACIÓN, el trayecto es obligatorio
+    // En modo EDICIÓN, si no se trazó uno nuevo, se omite (el backend conserva el viejo)
+    if (!trayectoData && !editingId) {
         showNotification('Debes trazar una ruta completa en el mapa (Inicio y Fin) antes de guardar', 'warning', '#form-new-route');
         return;
     }
-
-    // DIAGNÓSTICO TEMPORAL
-    console.log('📤 Trayecto a guardar:', {
-        distancia: trayectoData?.distancia_metros,
-        polyline: typeof trayectoData?.encodedPolyline === 'string'
-            ? trayectoData.encodedPolyline.slice(0, 40)
-            : JSON.stringify(trayectoData?.encodedPolyline)?.slice(0, 40)
-    });
-
+ 
+    // Log diagnóstico
+    if (trayectoData) {
+        console.log('📤 Trayecto a guardar:', {
+            distancia: trayectoData?.distancia_metros,
+            polyline: typeof trayectoData?.encodedPolyline === 'string'
+                ? trayectoData.encodedPolyline.slice(0, 40)
+                : JSON.stringify(trayectoData?.encodedPolyline)?.slice(0, 40)
+        });
+    } else {
+        console.log('📤 Modo edición sin nuevo trayecto — se conserva el trayecto existente.');
+    }
+ 
     const routeData = {
         name:    document.getElementById('route-name')?.value  || 'Sin nombre',
         color:   document.getElementById('route-color')?.value || '#2196F3',
         vehicle: document.getElementById('route-vehicle')?.value || null,
         driver:  document.getElementById('route-driver')?.value  || null,
-        trayecto: trayectoData
     };
-
-    const editingId = form.dataset.editingId;
-
+ 
+    // Solo incluir trayecto si se trazó uno nuevo
+    if (trayectoData) {
+        routeData.trayecto = trayectoData;
+    }
+ 
     try {
         await saveRoute(routeData, editingId);
         form.reset();
@@ -399,7 +409,7 @@ async function handleFormSubmit(e) {
         const rutasActualizadas = await fetchRoutes();
         setRoutes(rutasActualizadas);
         renderRoutes(rutasActualizadas);
-        showNotification('¡Ruta guardada exitosamente!', 'success');
+        showNotification(editingId ? '¡Ruta editada exitosamente!' : '¡Ruta guardada exitosamente!', 'success');
     } catch (error) {
         console.error("Error al guardar:", error);
         showNotification('Error al guardar la ruta', 'error');

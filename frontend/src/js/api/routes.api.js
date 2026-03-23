@@ -53,19 +53,30 @@ export async function fetchDrivers() {
 
 export async function saveRoute(routeData, editingId = null) {
     const method = editingId ? 'PUT' : 'POST';
-    const url = editingId ? `/routes/${editingId}` : '/routes';
-
+    const url    = editingId ? `/routes/${editingId}` : '/routes';
+ 
+    // En edición, limpiar campos null/vacíos para no pisar datos existentes en el backend
+    // Solo enviamos los campos que realmente tienen valor
+    const payload = editingId
+        ? Object.fromEntries(
+            Object.entries(routeData).filter(([_, v]) => v !== null && v !== '' && v !== undefined)
+          )
+        : routeData;
+ 
+    console.log(`📡 ${method} ${url}`, payload);
+ 
     const res = await authFetch(url, {
         method,
-        body: JSON.stringify(routeData)
+        body: JSON.stringify(payload)
     });
-
+ 
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Error al guardar la ruta');
+        throw new Error(err.error || err.message || 'Error al guardar la ruta');
     }
     return res.json();
 }
+ 
 
 // ✅ PONER
 export async function updateRouteStatus(id, action) {
