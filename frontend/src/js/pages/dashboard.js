@@ -230,12 +230,12 @@ const MapManager = {
                 geodesic:      true,
                 strokeColor:   '#0f1724',
                 strokeOpacity: 0,           // opacidad 0 = invisible (usamos icons para puntos)
-                strokeWeight:  7,
+                strokeWeight:  4,
                 icons: [{
                     icon: {
                         path:         'M 0,-1 0,1',
                         strokeOpacity: 0.85,
-                        strokeWeight:  4,
+                        strokeWeight:  3,
                         strokeColor:  '#0f1724',
                         scale:         4
                     },
@@ -391,9 +391,23 @@ const SocketManager = {
                 );
             }
             if (!last || dist > 15) {
+                // Si no existe la polilínea de recorrido real para este chofer, crearla
+                if (!actualPathPolylines[data.driverId]) {
+                    actualPathPolylines[data.driverId] = new window.google.maps.Polyline({
+                        path:          [],
+                        geodesic:      true,
+                        strokeColor:   '#1A73E8',
+                        strokeOpacity: 0.9,
+                        strokeWeight:  5,
+                        map,
+                        zIndex:        3
+                    });
+                }
+
                 actualPathPolylines[data.driverId]
-                    ?.getPath()
+                    .getPath()
                     .push(new window.google.maps.LatLng(pos.lat, pos.lng));
+
                 lastKnownLocations[String(data.driverId)] = {
                     lat: pos.lat, lng: pos.lng, timestamp: Date.now()
                 };
