@@ -375,7 +375,7 @@ const SocketManager = {
                     position: pos, map, title: 'Vehículo en movimiento',
                     icon: {
                         url:        '/assets/NUMACAR.svg',
-                        scaledSize: new window.google.maps.Size(36, 36),
+                        scaledSize: new window.google.maps.Size(64, 64),
                         anchor:     new window.google.maps.Point(18, 18)
                     },
                     zIndex: 999
